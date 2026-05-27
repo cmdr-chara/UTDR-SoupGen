@@ -1,0 +1,91 @@
+///@desc BG, Signals, Etc.
+//if ( live_call() ) { return live_result; } 
+outlinesoup_step(640, 480);
+ui_tab_yoff = lerp(ui_tab_yoff, !bord_visible ? ( ui_tab == 0 ? 55 : 65 ) : 0, 0.15); //Smoothly adjust orange and white borders
+soupy_panel_portrait.setHeight(340 + ui_tab_yoff);
+soupy_panel_border.setHeight(340 + ui_tab_yoff);
+soupy_panel_style.setHeight(340 + ui_tab_yoff);
+soupy_panel_extra.setHeight(340 + ui_tab_yoff);
+soupy_lui.update();
+
+if ( dial_text_outline != -1 && !string_search(dial_font, "outline", true) ) { dial_text_outline = -1; } //Remove outline color if we're not using an outline font
+
+#region Animation & Effects
+	#region Animate Face
+		if ( dial_text_gif && dial_face_auto && typist.get_delay_paused() ) { FACE_INDEX = 0; } //Stop the face from animating if the dialogue is being delayed
+		if ( !dial_face_auto ) { var amt = sprite_get_number(FACE_CURRENT); FACE_INDEX += FACE_SPEED; if ( FACE_INDEX >= amt ) { FACE_INDEX = 0; } } //Animate the portrait sprite
+		if ( bord_spd > 0 ) { //Animate the border
+			var amt = sprite_get_number(spr_bord);
+			if ( !bord_anim ) { bord_index += bord_spd; if ( bord_index >= amt ) { bord_index = 0; } }
+			else { 
+				if ( !bord_anim_track ) { bord_index += bord_spd mod amt; if ( round(bord_index) >= amt) { bord_anim_track = true; } }
+				else { bord_index -= bord_spd; if ( round(bord_index) <= 0) { bord_anim_track = false; } }
+			} 
+		};
+		if ( dial_indicator != -1 && dial_indicator_spd > 0 ) { //Animate the indicator
+			var amt = sprite_get_number(dial_indicator);
+			if ( !dial_indicator_anim ) { dial_indicator_index += dial_indicator_spd; if ( dial_indicator_index >= amt ) { dial_indicator_index = 0; } }
+			else { 
+				if ( !dial_indicator_anim_track ) { dial_indicator_index += dial_indicator_spd mod amt; if ( round(dial_indicator_index) >= amt) { dial_indicator_anim_track = true; } }
+				else { dial_indicator_index -= dial_indicator_spd; if ( round(dial_indicator_index) <= 0) { dial_indicator_anim_track = false; } }
+			} 
+		};
+	#endregion
+	
+	#region Shake Face
+		var canshake = soup_checkout("face shaker", false);
+		if ( canshake != undefined ) {
+			soupy_alarm("face shaker", canshake.time_ + 1);
+			soupy_alarm_run("face shaker", 1, function () { soup_checkout("face shaker"); dial_face_xoff = 0; dial_face_yoff = 0; exit; });
+		
+			if ( canshake.x_ ) { dial_face_xoff = random_range(-canshake.off_, canshake.off_); }
+			if ( canshake.y_ ) { dial_face_yoff = random_range(-canshake.off_, canshake.off_); }
+		}
+	#endregion
+#endregion
+
+#region BG
+	if ( ui_visible && !sprite_exists(global.refimg) ) {
+		var bg = layer_exists("bg3d") ? layer_get_id("bg3d") : layer_create(99, "bg3d"), _fx = layer_get_fx("bg3d"), _params; //Doesn't exist? Create it! Else, get the id.
+		if ( _fx == -1 ) { //Doesn't exist? Create it with default values
+			_fx = fx_create("_filter_parallax");
+			_params = fx_get_parameters(_fx);
+			_params.g_ParallaxDirection = [0, 0.54];
+			_params.g_ParallaxPerspective = 1;
+			_params.g_ParallaxPosition = [0, 1, 0];
+			_params.g_ParallaxScale = 0.5;
+			_params.g_ParallaxDepth = 0;
+			_params.g_ParallaxFogColour = [0, 0, 0, 1];
+			_params.g_ParallaxFogRange = [0, 40];
+			_params.g_ParallaxFogDepth = 0;
+			_params.g_ParallaxTexture = spr_testbg;
+			fx_set_parameters(_fx,_params);
+		}
+
+		_params = fx_get_parameters(_fx);
+		_params.g_ParallaxPosition[0] -= .02;
+		_params.g_ParallaxPosition[2] -= .01;
+		fx_set_parameters(_fx,_params);
+		layer_set_fx("bg3d",_fx);
+	}
+	else { if ( layer_exists("bg3d") ) { layer_destroy("bg3d"); } }
+	
+	if ( mouse_pressed && ui_viewing ) { ui_unviewref(); }
+#endregion
+
+#region Broadcast Signal
+	if ( struct_names_count(global.soupsignal) > 0 ) { 
+		var sig_ = soupy_alarm("signals", 1, true);
+		soupy_alarm_run(sig_.myname_, 0, function () { global.soupsignal = {}; });
+	}
+#endregion
+
+#region Fullscreen, Effects
+	//if ( keyboard_check_pressed(vk_f2) ) { event_perform(ev_create, 0); }
+	if ( mouse_pressed || mouse_pressed_right ) {
+		var clr_ = make_color_hsv(irandom(255), 255, 255);
+		instance_create_depth(mouse_x_gui, mouse_y_gui, -1, obj_particle, { sprite_index: spr_spark, image_speed: 0.50, follow: true, offx: -15, image_blend: clr_, });
+		instance_create_depth(mouse_x_gui, mouse_y_gui, -1, obj_particle, { sprite_index: spr_spark, image_speed: 0.50, image_xscale: -1, follow: true, offx: 25, image_blend: clr_, });
+	}
+	if ( keyboard_check_pressed(vk_f4) ) { window_set_fullscreen( !window_get_fullscreen() ); sfx_play(snd_equip2); }
+#endregion
