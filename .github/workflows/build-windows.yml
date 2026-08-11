@@ -10,6 +10,7 @@ on:
       - ".github/workflows/build-windows.yml"
       - "UTDR Textbox Gen/**"
       - "SOUP"
+      - "tools/restore_gamemaker_prefabs.ps1"
       - "tools/validate_fork.ps1"
 
 permissions:

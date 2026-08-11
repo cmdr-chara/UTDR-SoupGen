@@ -53,6 +53,16 @@ foreach ($file in $jsonFiles) {
 
 $project = Get-Content -LiteralPath $projectPath -Raw | ConvertFrom-Json
 
+$sdfPrefabReferences = @(
+    $project.ForcedPrefabProjectReferences |
+        Where-Object {
+            $_.link -eq 'io.gamemaker.sdfshaders-1.0.0' -and
+            $_.name -eq 'io.gamemaker.sdfshaders-1.0.0' -and
+            $_.path -eq 'io.gamemaker.sdfshaders-1.0.0.yyp'
+        }
+)
+Assert-Condition ($sdfPrefabReferences.Count -eq 1) 'GameMaker project does not declare the required SDF shader prefab'
+
 foreach ($resource in $project.resources) {
     $resourcePath = Join-Path $projectRoot $resource.id.path
     Assert-Condition (Test-Path -LiteralPath $resourcePath -PathType Leaf) "Missing resource: $($resource.id.path)"
@@ -189,6 +199,8 @@ Assert-Condition ($forkChangelog -match '(?m)^## 1\.6\.9\r?$') 'Fork changelog h
 Assert-Condition ($windowsWorkflow -match 'secrets\.ACCESS_KEY' -and $windowsWorkflow -match 'bscotch/igor-setup@[0-9a-f]{40}' -and $windowsWorkflow -match 'bscotch/igor-build@[0-9a-f]{40}') 'Windows workflow is missing GameMaker authentication or immutable Igor action pins'
 Assert-Condition ($windowsWorkflow -match '\$\{\{\s*github\.workspace\s*\}\}/UTDR Textbox Gen/UTDR Textbox Gen\.yyp') 'Windows workflow must pass an absolute project path to Igor'
 Assert-Condition ($windowsWorkflow -match 'restore_gamemaker_prefabs\.ps1' -and $prefabRestore -match '@gm-tools/project-tool-win-x64@2026\.0\.173' -and $prefabRestore -match 'PREFABS RESTORE') 'Windows workflow does not restore pinned GameMaker prefab dependencies'
+Assert-Condition ($prefabRestore -match 'io\.gamemaker\.sdfshaders-1\.0\.0' -and $prefabRestore -match 'PREFABSFOLDER=') 'Windows workflow does not restore the pinned GameMaker SDF shader prefab'
+Assert-Condition (([regex]::Matches($windowsWorkflow, 'tools/restore_gamemaker_prefabs\.ps1')).Count -ge 2) 'Windows workflow path filters do not include the prefab restore script'
 Assert-Condition ($windowsWorkflow -match 'GMLive\.fallback\.gml' -and $windowsWorkflow -match 'GMLive\.gml' -and $windowsWorkflow -match 'yyc: "false"') 'Windows workflow does not prepare the headless GMLive fallback or select the VM compiler'
 Assert-Condition ($windowsWorkflow -match 'actions/upload-artifact@[0-9a-f]{40}' -and $windowsWorkflow -match 'UTDR-SoupGen-Enhanced-Windows') 'Windows workflow does not publish a pinned build artifact'
 

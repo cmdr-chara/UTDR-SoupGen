@@ -54,18 +54,20 @@ foreach ($tool in @($projectTool, $packageTool, $gmpmLibrary)) {
     }
 }
 
+$prefabs = Join-Path (Split-Path -Parent $project) 'prefabs'
+
 & $projectTool PREFABS RESTORE `
     "SOURCE=$project" `
     "PACKAGETOOL=$packageTool" `
     "GMPM_DLL=$gmpmLibrary" `
     "PACKAGETOOLREGISTRY=$registry" `
-    'PACKAGETOOLVERBOSE=TRUE'
+    'PACKAGETOOLVERBOSE=TRUE' `
+    "PREFABSFOLDER=$prefabs"
 
 if ($LASTEXITCODE -ne 0) {
     throw 'GameMaker prefab restoration failed'
 }
 
-$prefabs = Join-Path (Split-Path -Parent $project) 'prefabs'
 $parallaxPrefab = @(
     Get-ChildItem -LiteralPath $prefabs -Directory -Filter 'io.gamemaker.gm_filter_parallax-*' -ErrorAction Stop
 )
@@ -74,9 +76,29 @@ if ($parallaxPrefab.Count -ne 1) {
     throw 'The required GameMaker parallax filter prefab was not restored'
 }
 
+$sdfPrefab = @(
+    Get-ChildItem -LiteralPath $prefabs -Directory -Filter 'io.gamemaker.sdfshaders-1.0.0' -ErrorAction Stop
+)
+
+if ($sdfPrefab.Count -ne 1) {
+    throw 'The required GameMaker SDF shader prefab was not restored'
+}
+
+$sdfMetadata = Join-Path $sdfPrefab[0].FullName 'prefab.json'
+$sdfProject = Join-Path $sdfPrefab[0].FullName 'io.gamemaker.sdfshaders-1.0.0.yyp'
+if (-not (Test-Path -LiteralPath $sdfMetadata -PathType Leaf) -or -not (Test-Path -LiteralPath $sdfProject -PathType Leaf)) {
+    throw 'The required GameMaker SDF shader prefab was not restored'
+}
+
+$sdfMetadataText = Get-Content -LiteralPath $sdfMetadata -Raw
+if ($sdfMetadataText -notmatch '"PackageId"\s*:\s*"io\.gamemaker\.sdfshaders"' -or $sdfMetadataText -notmatch '"Version"\s*:\s*"1\.0\.0"') {
+    throw 'The restored GameMaker SDF shader prefab metadata is invalid'
+}
+
 [pscustomobject]@{
     Project = $project
     Prefabs = $prefabs
     ParallaxPackage = $parallaxPrefab[0].Name
+    SdfPackage = $sdfPrefab[0].Name
     Status = 'PASS'
 } | Format-List
