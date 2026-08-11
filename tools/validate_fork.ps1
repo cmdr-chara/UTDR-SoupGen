@@ -76,7 +76,7 @@ $textFiles = @(
 
 foreach ($file in $textFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw
-    Assert-Condition ($content -notmatch '(?m)^(<<<<<<< .+|=======|>>>>>>> .+)$') "Conflict marker found: $($file.FullName)"
+    Assert-Condition ($content -notmatch '(?m)^(<<<<<<< .+|=======|>>>>>>> .+)\r?$') "Conflict marker found: $($file.FullName)"
 }
 
 $readme = Get-Content -LiteralPath (Join-Path $repository 'README.md') -Raw
@@ -182,7 +182,7 @@ Assert-Condition ($manifest.game_version -eq '1.6.9') 'SOUP manifest version is 
 Assert-Condition ($uimanager -match '#macro GAME_VERSION "1\.6\.9"') 'GAME_VERSION does not match the SOUP manifest'
 Assert-Condition ($windowsOptions.option_windows_version -eq '1.6.9.0') 'Windows version does not match release 1.6.9'
 Assert-Condition ($androidOptions.option_android_version -eq '1.6.9.0') 'Android version does not match release 1.6.9'
-Assert-Condition ($forkChangelog -match '(?m)^## 1\.6\.9$') 'Fork changelog has no 1.6.9 entry'
+Assert-Condition ($forkChangelog -match '(?m)^## 1\.6\.9\r?$') 'Fork changelog has no 1.6.9 entry'
 Assert-Condition ($windowsWorkflow -match 'secrets\.ACCESS_KEY' -and $windowsWorkflow -match 'bscotch/igor-setup@[0-9a-f]{40}' -and $windowsWorkflow -match 'bscotch/igor-build@[0-9a-f]{40}') 'Windows workflow is missing GameMaker authentication or immutable Igor action pins'
 Assert-Condition ($windowsWorkflow -match 'GMLive\.fallback\.gml' -and $windowsWorkflow -match 'GMLive\.gml' -and $windowsWorkflow -match 'yyc: "false"') 'Windows workflow does not prepare the headless GMLive fallback or select the VM compiler'
 Assert-Condition ($windowsWorkflow -match 'actions/upload-artifact@[0-9a-f]{40}' -and $windowsWorkflow -match 'UTDR-SoupGen-Enhanced-Windows') 'Windows workflow does not publish a pinned build artifact'
