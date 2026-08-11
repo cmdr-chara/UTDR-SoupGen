@@ -25,7 +25,7 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
     env:
-      YYP_PATH: UTDR Textbox Gen/UTDR Textbox Gen.yyp
+      YYP_PATH: '${{ github.workspace }}/UTDR Textbox Gen/UTDR Textbox Gen.yyp'
 
     steps:
       - name: Check out repository
