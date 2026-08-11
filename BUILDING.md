@@ -2,7 +2,7 @@
 
 ## GitHub Actions Windows build
 
-The repository workflow `.github/workflows/build-windows.yml` validates the project, installs the GameMaker runtime selected from the `.yyp` metadata, builds a Windows VM package with Igor, and uploads the result as a GitHub Actions artifact.
+The repository workflow `.github/workflows/build-windows.yml` validates the project, restores its official GameMaker prefab dependencies, installs the runtime selected from the `.yyp` metadata, builds a Windows VM package with Igor, and uploads the result as a GitHub Actions artifact.
 
 Before the first build:
 

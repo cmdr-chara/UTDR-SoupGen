@@ -54,6 +54,10 @@ jobs:
             throw "Missing repository secret ACCESS_KEY. Generate a GameMaker access key and add it under Settings > Secrets and variables > Actions."
           }
 
+      - name: Restore GameMaker prefabs
+        shell: pwsh
+        run: ./tools/restore_gamemaker_prefabs.ps1 -ProjectPath $env:YYP_PATH -ToolsRoot (Join-Path $env:RUNNER_TEMP "gamemaker-tools")
+
       - name: Set up GameMaker Igor
         id: igor
         uses: bscotch/igor-setup@470beb959fbb8f6ff548134aa1de70fc09a879e6 # v3

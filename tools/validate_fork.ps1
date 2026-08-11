@@ -31,9 +31,11 @@ $repository = [IO.Path]::GetFullPath($RepositoryRoot).TrimEnd('\')
 $projectRoot = Join-Path $repository 'UTDR Textbox Gen'
 $projectPath = Join-Path $projectRoot 'UTDR Textbox Gen.yyp'
 $windowsWorkflowPath = Join-Path $repository '.github/workflows/build-windows.yml'
+$prefabRestorePath = Join-Path $repository 'tools/restore_gamemaker_prefabs.ps1'
 
 Assert-Condition (Test-Path -LiteralPath $projectPath -PathType Leaf) "GameMaker project not found: $projectPath"
 Assert-Condition (Test-Path -LiteralPath $windowsWorkflowPath -PathType Leaf) "Windows GitHub Actions workflow not found: $windowsWorkflowPath"
+Assert-Condition (Test-Path -LiteralPath $prefabRestorePath -PathType Leaf) "GameMaker prefab restore script not found: $prefabRestorePath"
 
 $jsonFiles = @(
     Get-ChildItem -LiteralPath $projectRoot -Recurse -File |
@@ -82,6 +84,7 @@ foreach ($file in $textFiles) {
 $readme = Get-Content -LiteralPath (Join-Path $repository 'README.md') -Raw
 $forkChangelog = Get-Content -LiteralPath (Join-Path $repository 'FORK_CHANGELOG.md') -Raw
 $windowsWorkflow = Get-Content -LiteralPath $windowsWorkflowPath -Raw
+$prefabRestore = Get-Content -LiteralPath $prefabRestorePath -Raw
 $uimanager = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/uimanager/uimanager.gml') -Raw
 $uiinit = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/uiinit/uiinit.gml') -Raw
 $systemCreate = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Create_0.gml') -Raw
@@ -185,6 +188,7 @@ Assert-Condition ($androidOptions.option_android_version -eq '1.6.9.0') 'Android
 Assert-Condition ($forkChangelog -match '(?m)^## 1\.6\.9\r?$') 'Fork changelog has no 1.6.9 entry'
 Assert-Condition ($windowsWorkflow -match 'secrets\.ACCESS_KEY' -and $windowsWorkflow -match 'bscotch/igor-setup@[0-9a-f]{40}' -and $windowsWorkflow -match 'bscotch/igor-build@[0-9a-f]{40}') 'Windows workflow is missing GameMaker authentication or immutable Igor action pins'
 Assert-Condition ($windowsWorkflow -match '\$\{\{\s*github\.workspace\s*\}\}/UTDR Textbox Gen/UTDR Textbox Gen\.yyp') 'Windows workflow must pass an absolute project path to Igor'
+Assert-Condition ($windowsWorkflow -match 'restore_gamemaker_prefabs\.ps1' -and $prefabRestore -match '@gm-tools/project-tool-win-x64@2026\.0\.173' -and $prefabRestore -match 'PREFABS RESTORE') 'Windows workflow does not restore pinned GameMaker prefab dependencies'
 Assert-Condition ($windowsWorkflow -match 'GMLive\.fallback\.gml' -and $windowsWorkflow -match 'GMLive\.gml' -and $windowsWorkflow -match 'yyc: "false"') 'Windows workflow does not prepare the headless GMLive fallback or select the VM compiler'
 Assert-Condition ($windowsWorkflow -match 'actions/upload-artifact@[0-9a-f]{40}' -and $windowsWorkflow -match 'UTDR-SoupGen-Enhanced-Windows') 'Windows workflow does not publish a pinned build artifact'
 
