@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - codex/enhanced-soupgen
+      - enhanced-soupgen
     paths:
       - ".github/workflows/build-windows.yml"
       - "UTDR Textbox Gen/**"
