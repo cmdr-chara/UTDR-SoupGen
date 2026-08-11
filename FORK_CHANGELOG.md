@@ -8,6 +8,7 @@ This fork tracks [SoupTaels/UTDR-SoupGen](https://github.com/SoupTaels/UTDR-Soup
 - Added platform-aware GIF frame and memory budgets, explicit encoder error handling, exact frame accounting, staged final files, and bounded cancel cleanup. Typewriter exports now always contain an initial frame and use a 2/2/1-centisecond cadence for an exact 60 FPS average.
 - Rebuilt bulk face ZIP import around a stable archive snapshot and a conservative preflight parser. Imports reject traversal, links, duplicate aliases, unsupported ZIP features, excessive compression, invalid CRCs, unsafe PNG dimensions, and decoded-pixel budget overflows before loading sprites.
 - Made ZIP installation transactional for handled runtime failures: files are staged and verified before rename, then aliases and dictionaries are registered only after every file is committed. A failed import rolls back its files, sprites, aliases, dictionaries, and staging directory.
+- Added a pinned GitHub Actions pipeline for an automated Windows VM build, including static validation, headless GMLive fallback preparation, Igor logs, and downloadable build artifacts.
 
 Known boundaries: ZIP support intentionally accepts only a conservative ASCII, stored/deflate subset. The runtime rollback is exception-safe but not process-crash atomic across a multi-file commit, and GameMaker's native extractor still requires platform smoke testing.
 
