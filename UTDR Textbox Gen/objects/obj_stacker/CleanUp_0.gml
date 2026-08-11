@@ -2,14 +2,13 @@
 var soupstack_count = array_length(soupstack_spr), soupstack_i = 0;
 if ( soupstack_count == 0 ) { exit; } //Cancel early if there's nothing to draw
 
-if ( !abort ) { surface_save(soupstack_surf, soupstack_path); } //Save everything drawn to this surface, aka our stack of sprites
-with ( SYSTEMUI ) { dial_text_page = 0; }
+if ( !abort && surface_exists(soupstack_surf) ) { surface_save(soupstack_surf, soupstack_path); } //Save everything drawn to this surface, aka our stack of sprites
 
 repeat ( soupstack_count ) { 
 	sprite_delete(soupstack_spr[soupstack_i]); show_debug_message("Deleted sprite stack {0}/ {1}", soupstack_i, soupstack_count - 1);
 soupstack_i++; } //Delete all the sprites
 
-surface_free(soupstack_surf); //Free surface to prevent memory leaks
+if ( surface_exists(soupstack_surf) ) { surface_free(soupstack_surf); } //Free surface to prevent memory leaks
 MobileUtils_Vibrate_Shot(100);
 if ( !abort ) { 
 	soupy_ui_success(soupstack_fname, , soupstack_path);

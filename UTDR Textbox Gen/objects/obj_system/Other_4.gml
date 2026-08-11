@@ -1,17 +1,19 @@
-///@desc Error Handling
+///@desc Recovery and Error Handling
+if ( file_exists(LAST_SAVED) ) {
+	var lasttyped = buffer_load(LAST_SAVED);
+	if ( buffer_exists(lasttyped) ) {
+		var result = buffer_get_size(lasttyped) > 0 ? buffer_read(lasttyped, buffer_text) : ""; //Restore the complete multiline input
+		buffer_delete(lasttyped);
+		dial_text = result; dial_text_page_c = scribble(dial_text).get_page_count(); textinput.SetValue(dial_text);
+	}
+}
+
 if ( file_exists(errname) ) {
 	var buff = buffer_load(errname); //Load file
 	var err_ = buffer_read(buff, buffer_string); //Read everything the file contains and store it in the variable
 	buffer_delete(buff); //Delete buffer to prevent memory leaks
 	file_delete(errname); //Delete the file so the game doesn't constantly show this error screen
 	instance_create_depth(0, 0, 0, obj_errhandler, { err_ });
-	
-	if ( file_exists(LAST_SAVED) ) {
-		var lasttyped = file_text_open_read(LAST_SAVED);
-		var result = file_text_read_string(lasttyped); //Get what the user last typed
-		dial_text = result; textinput.SetValue(dial_text);
-		file_text_close(lasttyped);
-	}
 	
 	instance_deactivate_object(self);
 }

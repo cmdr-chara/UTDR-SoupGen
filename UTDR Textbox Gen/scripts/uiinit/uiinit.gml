@@ -100,7 +100,7 @@ function ui_init() {
 					}), "soupy_paste").SetShortcut("Ctrl+V"))
 					.ContextMenuAddItem(QuillContextMenuSeparator())
 					.ContextMenuAddItem(QuillContextMenuItem("Select All", method(self, function () { textinput.SelectAll(); sfx_play(snd_enc1); }), "soupy_select").SetShortcut("Ctrl+A"))
-					.ContextMenuAddItem(QuillContextMenuItem("Clear All", method(self, soupy_context_clear), "soupy_clear").SetShortcut("Ctrl+S"))
+					.ContextMenuAddItem(QuillContextMenuItem("Clear All", method(self, soupy_context_clear), "soupy_clear"))
 					.ContextMenuAddItem(QuillContextMenuItem("Undo", method(self, undo_stack_undo), "soupy_undo").SetShortcut("Ctrl+Z"))
 					.ContextMenuAddItem(QuillContextMenuItem("Redo", method(self, undo_stack_redo), "soupy_redo").SetShortcut("Shift+Ctrl+Z"))
 					.ContextMenuAddItem(QuillContextMenuSeparator())
@@ -200,7 +200,7 @@ function ui_init() {
 					new LuiRow().setFlexGrow(1).centerContent().addContent([ //Sprite image alpha
 						new LuiText({ value: "Opacity:", width: 85, text_halign: fa_center, text_valign: fa_middle, font: fnt_speech, }).setTooltip("Changes the alpha of every dialogue portrait.\nThis value can be [rainbow]changed dynamically[/]\nif using [c_yellow][[effect,fade,#,frames]", true, , true),
 						new LuiSlider({ value: dial_face_alpha, min_value: 0, color_text: c_black, color_text_drag: c_white, max_value: 1, rounding: false, display_value: true, bar_sprite: spr_border_header, bar_sprite_back: spr_border_header, }).addEvent(LUI_EV_SHOW, function(e_) { e_.set(SYSTEMUI.dial_face_alpha); }).addEvent(LUI_EV_VALUE_UPDATE, function(e_) { 
-							var value_ = real(e_.get()); SYSTEMUI.dial_face_alpha = value_; SYSTEMUI.dial_face_alpha_orig = SYSTEMUI.dial_face_alpha; soup_checkout("dataimage", false, true).angle = value_;
+							var value_ = real(e_.get()); SYSTEMUI.dial_face_alpha = value_; SYSTEMUI.dial_face_alpha_orig = SYSTEMUI.dial_face_alpha; soup_checkout("dataimage", false, true).setAlpha(value_);
 						}),
 					]),
 				

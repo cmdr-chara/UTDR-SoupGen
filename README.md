@@ -1,20 +1,21 @@
 <p align="center"><img src="https://files.catbox.moe/1o2oj2.png" style="display:block; margin:auto; width:300px"></p>
 <hr />
-<h1 align="center"><img src="https://files.catbox.moe/ath3jh.png" style="display:block; margin:auto;"> <img src="https://files.catbox.moe/9l8b2v.png" style="display:block; margin:auto;"> UTDR SoupGen <img src="https://files.catbox.moe/6kttry.png" style="display:block; margin:auto;"> <img src="https://files.catbox.moe/tuckng.png" style="display:block; margin:auto;">
+<h1 align="center">UTDR SoupGen
 
-![GitHub Repo stars](https://img.shields.io/github/stars/SoupTaels/UTDR-SoupGen) ![GitHub last commit](https://img.shields.io/github/last-commit/SoupTaels/UTDR-SoupGen) ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/SoupTaels/UTDR-SoupGen) ![GitHub License](https://img.shields.io/github/license/SoupTaels/UTDR-SoupGen) ![GitHub repo size](https://img.shields.io/github/repo-size/SoupTaels/UTDR-SoupGen) ![Static Badge](https://img.shields.io/badge/So%20Soupy%3F-Absolutely!!%20%F0%9F%8D%B2-orange)
+![GitHub Repo stars](https://img.shields.io/github/stars/cmdr-chara/UTDR-SoupGen) ![GitHub last commit](https://img.shields.io/github/last-commit/cmdr-chara/UTDR-SoupGen) ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/cmdr-chara/UTDR-SoupGen) ![GitHub License](https://img.shields.io/github/license/cmdr-chara/UTDR-SoupGen) ![GitHub repo size](https://img.shields.io/github/repo-size/cmdr-chara/UTDR-SoupGen)
 
 
 </h1>
+<p align="center"><b>Enhanced fork maintained at <a href="https://github.com/cmdr-chara/UTDR-SoupGen">cmdr-chara/UTDR-SoupGen</a>.</b><br>Based on SoupTaels' MIT-licensed upstream. See <a href="FORK_CHANGELOG.md">FORK_CHANGELOG.md</a> for the fork-specific changes and verification status.</p>
 <p align="center"><i><b>An insanely customizable, flexible, and soupy OFFLINE Undertale & Deltarune dialogue textbox generator! Made in <a href="https://gamemaker.io/en">GameMaker</a> and powered by <a href="https://www.jujuadams.com/Scribble/#/latest/">Scribble</a>.</b></i></p>
-<p align="center">No generative AI was used during any of this, nor do I give permission for models to train off of my work.</p>
+<p align="center">The original upstream project states that no generative AI was used in its creation. This enhanced fork includes AI-assisted maintenance changes documented in the fork changelog.</p>
 <p align="center"><img src="https://github.com/user-attachments/assets/0c837117-2d38-4894-ba07-0f245c1d8b21" style="display:block; margin:auto;"></p>
 <p align="center"><img src="https://files.catbox.moe/jew38r.png" style="display:block; margin:auto;"></p>
 <p align="center">Available for Windows and Android natively, but also runs just fine on Linux and Mac through Wine and Whisky. There's also an experimental online version.</p>
 <p align="center"><img src="https://files.catbox.moe/bat3y2.gif" style="display:block; margin:auto;"></p>
 <p align="center"><a href="https://soup-taels.itch.io/utdr-soupgen">Try out the experimental online version!</a></p> <p align="center"><a href="https://gamejolt.com/games/utdrgoodsoupgen/1072959">Alternative link for the online version.</a></p>
 <p align="center"><img src="https://files.catbox.moe/m2peu9.gif" style="display:block; margin:auto;"></p>
-<p align="center"><a href="https://github.com/SoupTaels/UTDR-Textbox-Soup/releases">Get the latest release/ download here!</a></p>
+<p align="center"><a href="https://github.com/cmdr-chara/UTDR-SoupGen/releases">Enhanced fork releases will be published here.</a></p>
 <hr />
 <p align="center"><a href="https://rentry.co/utdrsoupguides">Help guide is hosted here!</a></p>
 <p align="center"><a href="https://rentry.co/utdrsoupguides#alternatives-to-consider">Alternatives to consider</a></p>

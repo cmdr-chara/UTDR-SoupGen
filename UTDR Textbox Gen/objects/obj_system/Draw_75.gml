@@ -70,10 +70,14 @@ if ( screenshot || record.enabled ) {
 			} }
 			else { soup_checkout("export dialogue"); window_progress(window_progress_error, 1, 1); soupy_message("The export operation was canceled.", , 350, , , snd_cancel, , function(){ window_progress(window_progress_none); TweenScript(SYSTEMUI, 0, 2, function(){ soup_store_clear(); }); }); if ( record.enabled ) { record.id_ = gif_save(record.id_, $"{directory_get_temporary_path()}soupytemp.gif"); file_delete($"{directory_get_temporary_path()}soupytemp.gif"); } }
 			
-			soup_checkout("previewcancel", , true); soup_checkout("lastpage", , true);
+			soup_checkout("previewcancel", , true);
+			var restore_page = soup_checkout("lastpage", , true);
+			if ( !is_numeric(restore_page) ) { restore_page = 0; }
+			restore_page = clamp(floor(restore_page), 0, max(0, SYSTEMUI.dial_text_page_c - 1));
 			surface_free(screenshot_surf); screenshot_surf = -1; delete screenshot_surf; if ( buffer_exists(record.id_) ) { buffer_delete(record.id_); delete record.id_; }
 			with ( record ) { frames = 0; framesmax = 0; enabled = false; id_ = -1; }
-			with ( SYSTEMUI ) { ui_finished = false; ui_preview = false; ui_finished_y = -100; typist_reset(); file_newname = ""; screenshot = false; screenshot_stacked = false; dial_text_gif = false; dial_wrap_count = 1; spr_bord = bord_prev; dial_text_page = 0; bord_box_visible = true; ui_tab = soup_checkout("tablast", , true); ui_visible = true; ui_reset(); }
+			SYSTEMUI.dial_text_page = restore_page;
+			with ( SYSTEMUI ) { ui_finished = false; ui_preview = false; ui_finished_y = -100; typist_reset(); file_newname = ""; screenshot = false; screenshot_stacked = false; dial_text_gif = false; dial_wrap_count = 1; spr_bord = bord_prev; bord_box_visible = true; ui_tab = soup_checkout("tablast", , true); ui_visible = true; ui_reset(); }
 			exit;
 		});
 		soup_store("finishfunc", finish_func, true, true);
@@ -99,7 +103,7 @@ if ( screenshot || record.enabled ) {
 				}
 				dial_text_page++; sfx_play(snd_equip2);
 			}
-			else { dial_text_page = 0; finish_func(false, true); screenshot = false; screenshot_stacked = false; instance_destroy(obj_stacker); exit; }
+			else { finish_func(false, true); screenshot = false; screenshot_stacked = false; instance_destroy(obj_stacker); exit; }
 		}
 	}
 	else if ( record.enabled ) {

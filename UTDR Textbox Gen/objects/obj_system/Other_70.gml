@@ -46,7 +46,6 @@ switch ( get_[? "type"] ) {
 			
 			default: {
 				MobileUtils_Vibrate_Shot(50);
-				if ( type == "face" && MobileUtils_Image_Height(result) > 70 && MobileUtils_Image_Width(result) > 70 ) { MobileUtils_Image_Resize(result, 70, 70); }
 				
 				var func_ = function() {
 					var fname = soup_checkout("fname");

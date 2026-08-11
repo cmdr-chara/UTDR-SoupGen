@@ -4,7 +4,13 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 	ui_tab = 0; 
 	ui_reset(); 
 	soupy_alarm("failsafe", 15);
-	soupy_alarm_run("failsafe", 0, function(){ sfx_play(snd_sparkle); with ( SYSTEMUI ) { ui_finished = false; ui_preview = false; ui_finished_y = -100; typist_reset(); file_newname = ""; screenshot = false; screenshot_stacked = false; dial_text_gif = false; dial_wrap_count = 1; spr_bord = bord_prev; dial_text_page = 0; bord_box_visible = true; ui_tab = soup_checkout("tablast", , true); ui_visible = true; ui_reset(); } });
+	soupy_alarm_run("failsafe", 0, function(){
+		var restore_page = soup_checkout("lastpage", , true);
+		if ( !is_numeric(restore_page) ) { restore_page = 0; }
+		SYSTEMUI.dial_text_page = clamp(floor(restore_page), 0, max(0, SYSTEMUI.dial_text_page_c - 1));
+		sfx_play(snd_sparkle);
+		with ( SYSTEMUI ) { ui_finished = false; ui_preview = false; ui_finished_y = -100; typist_reset(); file_newname = ""; screenshot = false; screenshot_stacked = false; dial_text_gif = false; dial_wrap_count = 1; spr_bord = bord_prev; bord_box_visible = true; ui_tab = soup_checkout("tablast", , true); ui_visible = true; ui_reset(); }
+	});
 	exit; 
 }
 #region UI Borders and Buttons

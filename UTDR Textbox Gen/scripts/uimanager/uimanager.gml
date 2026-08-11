@@ -13,7 +13,7 @@
 	#macro AUTO_ASTERISK ( ( obj_system.dial_text_halign == 0 && obj_system.dial_text_valign == 0 ) && obj_system.dial_point_auto && string_trim(obj_system.dial_point_chr) != "" ) //Whether to enable auto-asterisk
 	#macro PATHSEP (( os_type == os_windows || os_type == os_xboxseriesxs || os_type == os_gdk ) ? "\\"  :  "/") //Get platform-dependant path
 	#macro PREF_SOUP $"{!is_android() ? executable_get_directory() : soup_checkout("android", false, true)}soupy_preferences.soupy" //Settings to save
-	#macro GAME_VERSION "1.6.7" //Current game version
+	#macro GAME_VERSION "1.6.8" //Current game version
 #endregion
 ///@desc Help Scribble with how to align the text
 function scribble_alignment(halign_ = 0, valign_ = 0) {
@@ -86,6 +86,15 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 	}
 #endregion
 
+///@desc Saves the latest dialogue text for crash recovery.
+function soupy_save_last_typed(text_) {
+	var text_bytes_ = string_byte_length(text_);
+	var lasttyped = buffer_create(max(1, text_bytes_), buffer_fixed, 1);
+	if ( text_bytes_ > 0 ) { buffer_write(lasttyped, buffer_text, text_); }
+	buffer_save(lasttyped, LAST_SAVED);
+	buffer_delete(lasttyped);
+}
+
 function TextChange(txt, point) : UndoableChange() constructor { //Handle undo/ redoing changes
 	//live_auto_call
 	prev_txt = SYSTEMUI.dial_text; //Store previous/ inital text
@@ -97,16 +106,17 @@ function TextChange(txt, point) : UndoableChange() constructor { //Handle undo/ 
 	static apply = function() { with ( obj_system ) { //Apply recent changes
 		dial_text = other.mytxt; dial_text_page_c = scribble(dial_text).get_page_count();
 		textinput.SetValue(dial_text);
-		
-		if ( file_exists(LAST_SAVED) ) { file_delete(LAST_SAVED); }
-		var lasttyped = file_text_open_write(LAST_SAVED);
-		file_text_write_string(lasttyped, dial_text); //Save what the user last typed
-		file_text_close(lasttyped);
+		soupy_save_last_typed(dial_text);
 		
 		textinput.SetCaret(other.point_); } 
 		sfx_play(snd_updated); 
 	}
-    static undo = function() { with ( obj_system ) { dial_text = other.prev_txt; dial_text_page_c = scribble(dial_text).get_page_count(); textinput.SetValue(dial_text); textinput.SetCaret(other.point_prev); } sfx_play(snd_throw); }
+	static undo = function() { with ( obj_system ) {
+		dial_text = other.prev_txt; dial_text_page_c = scribble(dial_text).get_page_count();
+		textinput.SetValue(dial_text);
+		soupy_save_last_typed(dial_text);
+		textinput.SetCaret(other.point_prev);
+	} sfx_play(snd_throw); }
 }
 
 ///@desc Create a GUI button. Accepts { x, y, text, padd_(x1, y1, x2, y2, multi), leeway, x2, y2, sprite, draw_nine, index, (x)(y)scale, angle, font, color, color_butt, halign, and valign, and functions for on_enter(runs once), on_hover, on_leave(once), on_click(once), on_held, on_released(once) }
@@ -220,7 +230,6 @@ function ui_manage() {
 			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")) ) { //Undo/ redo
 				if ( !keyboard_check(vk_shift) ) { undo_stack_undo(); } else { undo_stack_redo(); } 
 			}
-			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("S")) ) { soupy_context_clear(); } //Clear All
 			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("D")) ) { soupy_context_page(); } //Insert Page Break
 			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("P")) ) { soupy_context_macro(); } //Text Macro
 		}

@@ -1,5 +1,5 @@
 {
-  "game_version":"1.6.7",
-  "game_page":"https://github.com/SoupTaels/UTDR-Textbox-Soup",
-  "changelog":"- fixed ralsei sometimes appearing monochrome in gifs|due to his pink being green screened out|- if this happens with other characters,|try messing with the GIF BG Color",
+  "game_version":"1.6.8",
+  "game_page":"https://github.com/cmdr-chara/UTDR-SoupGen/releases",
+  "changelog":"- safer text recovery across undo and redo|- Ctrl+S no longer clears the dialogue|- canceled file pickers are now no-ops|- fixed portrait opacity, scaling, and stack geometry|- exports restore the page that was active before export"
 }
