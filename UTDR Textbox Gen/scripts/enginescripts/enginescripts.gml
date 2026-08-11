@@ -174,7 +174,7 @@ function map_value(value_, min1_, max1_, min2_, max2_) { return ( ( ( value_ - m
 ///@arg {String} substr_				The string to check.
 ///@arg {Bool} casesense_		Whether the string is case sensitive.
 function string_search(str_ = "", substr_ = "", casesense_ = false) {
-	if ( substr_ == "" || str_ == "" ) { return false; }
+	if ( substr_ == "" || str_ == "" ) || ( !is_string(str_) ) { return false; }
 	return ( string_pos(substr_, !casesense_ ? string_lower(str_) : str_) > 0 );
 }
 
@@ -198,7 +198,8 @@ function filename_dir_name(_file) {
 
 ///@desc Same as draw_sprite_ext(), but will make sure if the sprite exists. Otherwise, draw nothing. Useful for external sprites
 function draw_sprite_ensure(sprite, subimg = 0, xx = x, yy = y, xscale = 1, yscale = xscale, rot = 0, color = c_white, alpha = 1) {
-	var spr_ = is_string(sprite) ? asset_get_index(sprite) : sprite;
+	var face_ = get_face(sprite), bord_ = get_border(sprite), icon_ = get_icon(sprite), spr_;
+	if ( face_ != -1 ) { spr_ = face_; } else if ( bord_ != -1 ) { spr_ = bord_; } else if ( icon_ != -1 ) { spr_ = icon_; } else { spr_ = is_string(sprite) ? asset_get_index(sprite) : sprite; }
 	if ( spr_ != -1 ) { draw_sprite_ext(spr_, subimg, xx, yy, xscale, yscale, rot, color, alpha); } else { show_debug_message($"\"{sprite}\" doesn't exist!"); }
 }
 
@@ -404,6 +405,7 @@ function string_upper_first(_str) {
 
 ///@desc Game restarting using game_change
 function game_restart_alt() {
+	if ( is_android() ) { exit; }
 	if ( game_is_compiled() ) { //If we're not running the game from the IDE
 		var params = "";
 		var count = parameter_count();
@@ -421,9 +423,144 @@ function game_restart_alt() {
 	}
 }
 
+///@desc Checks once whether the game is running on Android or mobile browser.
+function is_android()
+{
+	static result = undefined;
+	if ( !is_undefined(result) ) { return result; }
+	result = ( os_type == os_android );
+	return result;
+}
+
+///@desc Checks once whether the game is running on Android or mobile browser.
+function is_android_wasm()
+{
+	static result_w = undefined;
+	if ( !is_undefined(result_w) ) { return result_w; }
+		
+	var mobileb = false;
+	if ( os_type == os_gxgames ) { //Check if we're running in a browser using the WASM/ Opera GX export
+		var osinfo = os_get_info();
+		mobileb = bool(osinfo[? "mobile"]);
+		ds_map_destroy(osinfo);
+	}
+
+	result_w = mobileb;
+	return result_w;
+}
+
 ///@desc Makes code run based on an on and off timer
 ///@param {real} offTime When code doesn't run
 ///@param {real} onTime When code runs
 ///@param {real} phaseShift Timer offset
 ///@param {real} clock Timer (default: current_time(milliseconds))
 function blink(offTime = 500, onTime = offTime, phaseShift = 0, clock = current_time) { return ( clock + phaseShift ) mod ( offTime + onTime ) >= offTime; }
+
+/// @func   hex_to_dec(hex)
+///
+/// @desc   Returns an integer converted from an hexadecimal string.
+///
+/// @param  {string}    hex         hexadecimal digits
+///
+/// @return {real}      positive integer
+///
+/// GMLscripts.com/license
+function hex_to_dec(hex) 
+{
+    var dec = 0;
+
+    var dig = "0123456789ABCDEF";
+    var len = string_length(hex);
+    for (var pos = 1; pos <= len; pos += 1) {
+        dec = dec << 4 | (string_pos(string_char_at(hex, pos), dig) - 1);
+    }
+
+    return dec;
+}
+
+//  Returns an RGB color from a given hexadecimal color code.
+//  Depends on hex_to_dec().
+//
+//      hex         hexadecimal color in RRGGBB format, string
+//
+/// GMLscripts.com/license
+function hex_to_color(hex_)
+{
+    var hex,dec,col;
+    hex = hex_;
+    dec = hex_to_dec(hex);
+    col = (dec & 16711680) >> 16 | (dec & 65280) | (dec & 255) << 16;
+    return col;
+}
+
+//  Returns a given color as a hexadecimal string in RRGGBB format.
+//  Depends on dec_to_hex().
+//
+//      color       RGB color, real
+//
+/// GMLscripts.com/license
+function color_to_hex(color_)
+{
+    var color,dec;
+    color = color_;
+    dec = (color & 16711680) >> 16 | (color & 65280) | (color & 255) << 16;
+    return dec_to_hex(dec);
+}
+
+/// @func   dec_to_hex(dec, len)
+///
+/// @desc   Returns a given value as a string of hexadecimal digits.
+///         Hexadecimal strings can be padded to a minimum length.
+///         Note: If the given value is negative, it will
+///         be converted using its two's complement form.
+///
+/// @param  {real}      dec         integer
+/// @param  {real}      [len=1]     minimum number of digits
+///
+/// @return {string}    hexadecimal digits
+///
+/// GMLscripts.com/license
+function dec_to_hex(dec, len = 1)
+{
+    var hex = "";
+
+    if (dec < 0) {
+        len = max(len, ceil(logn(16, 2 * abs(dec))));
+    }
+
+    var dig = "0123456789ABCDEF";
+    while (len-- || dec) {
+        hex = string_char_at(dig, (dec & $F) + 1) + hex;
+        dec = dec >> 4;
+    }
+
+    return hex;
+}
+
+///@desc Returns whether the game is running on Opera GX(aka WebAssembly). This check only needs to be done once, so a static is used.
+function is_wasm() {
+	static wasmcheck = undefined;
+	if ( !is_undefined(wasmcheck) ) { return wasmcheck; }
+	
+	wasmcheck = ( os_type == os_operagx );
+	return wasmcheck;
+}
+
+///@desc Returns a Data URI of the sprite.
+function data_uri(sprite_) {
+	var buffer = buffer_load(sprite_);
+	if ( buffer == -1 ) { return -1; }
+	var bufferBase64 = buffer_base64_encode(buffer, 0, buffer_get_size(buffer));
+	buffer_delete(buffer);
+	return "data:image/png;base64," + bufferBase64;
+}
+
+function sine_wave(time, period, amplitude, midpoint) {
+    return sin(time * 2 * pi / period) * amplitude + midpoint;
+}
+
+function sine_between(time, period, minimum, maximum) {
+    var midpoint = mean(minimum, maximum);
+    var amplitude = maximum - midpoint;
+    return sine_wave(time, period, amplitude, midpoint);
+}

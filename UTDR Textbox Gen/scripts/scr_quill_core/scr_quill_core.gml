@@ -1334,8 +1334,8 @@ function __QuillCore() constructor {
 			if (is_struct(_tb_hd) && is_struct(_tb_hd.config) && _tb_hd.config[$ "multiline"] == true) {
 				var _st3 = _tb_hd.config[$ "scroll_state"];
 				if (is_struct(_st3) && is_struct(_tb_hd.last_scroll_thumb_rect) && is_struct(_tb_hd.last_scroll_track_rect)) {
-					var _th = _tb_hd.last_scroll_thumb_rect;
-					var _in_thumb = (_mx >= _th.x1 && _mx <= _th.x2 && _my >= _th.y1 && _my <= _th.y2);
+					var _th = _tb_hd.last_scroll_thumb_rect, _th_padd = _tb_hd.scrollbar_padding;
+					var _in_thumb = (_mx >= _th.x1 - _th_padd && _mx <= _th.x2 + _th_padd && _my >= _th.y1 - _th_padd && _my <= _th.y2 + _th_padd);
 					if (_in_thumb) {
 						_st3.dragging = true;
 						_st3.drag_axis = "v";
@@ -1347,8 +1347,8 @@ function __QuillCore() constructor {
 					}
 				}
 				if (is_struct(_st3) && is_struct(_tb_hd.last_scroll_h_thumb_rect) && is_struct(_tb_hd.last_scroll_h_track_rect)) {
-					var _th_h = _tb_hd.last_scroll_h_thumb_rect;
-					var _in_thumb_h = (_mx >= _th_h.x1 && _mx <= _th_h.x2 && _my >= _th_h.y1 && _my <= _th_h.y2);
+					var _th_h = _tb_hd.last_scroll_h_thumb_rect, _th_padd = _tb_hd.scrollbar_padding;;
+					var _in_thumb_h = (_mx >= _th_h.x1 - _th_padd && _mx <= _th_h.x2 + _th_padd && _my >= _th_h.y1 - _th_padd && _my <= _th_h.y2 + _th_padd);
 					if (_in_thumb_h) {
 						_st3.dragging = true;
 						_st3.drag_axis = "h";
@@ -1511,7 +1511,7 @@ function __QuillCore() constructor {
 
 		// Right click opens context menu.
 		//var _tb = __GetBoxById(_hover);
-		if ( _mouse_r_pressed ) {
+		if ( _mouse_r_pressed || !is_undefined(soup_checkout("rightclick", false, true)) ) {
 			if (_hover > 0) {
 				__SetActive(_hover);
 
@@ -1524,7 +1524,7 @@ function __QuillCore() constructor {
 						__TextInputSetCaret(_tb2, _idx3, false, _tb2.config);
 					}
 
-					if ( _tb2.context_menu_enabled ) { OpenContextMenu(__BuildContextMenuForTb(_tb2), _mx, _my, _tb2.id); }
+					if ( _tb2.context_menu_enabled ) { OpenContextMenu(__BuildContextMenuForTb(_tb2), _mx, _my, _tb2.id); soup_checkout("rightclick", , true); }
 				}
 			}
 			else {
@@ -1729,7 +1729,7 @@ function __QuillCore() constructor {
 
 		if (!_read_only) {
 			if (_multiline) {
-				if (__TextInputKeyRepeat(_tb, vk_enter)) {
+				if (__TextInputKeyRepeat(_tb, vk_enter) && !is_android() ) {
 					__TextAreaInsertAutoIndentNewline(_tb, _cfg);
 				}
 			}
@@ -1751,7 +1751,7 @@ function __QuillCore() constructor {
 				}
 			}
 
-			if (__TextInputKeyRepeat(_tb, vk_backspace)) {
+			if (__TextInputKeyRepeat(_tb, vk_backspace) && _cfg[$ "backspace_enabled"] == true && !is_android() ) {
 				if (__TextInputHasSelection(_tb)) {
 					__TextInputDeleteSelection(_tb, _cfg);
 				}

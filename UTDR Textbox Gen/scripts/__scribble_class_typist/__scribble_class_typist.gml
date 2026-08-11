@@ -572,17 +572,17 @@ function __scribble_class_typist(_per_line) constructor
                     }
                 break;
                 
-                //Probably a current event
+               //Probably a current event
                 default:
                     //Otherwise try to find a custom event
                     var _function = _typewriter_events_map[? _event_name];
                     if (is_method(_function))
                     {
-                        with(_function_scope) _function(_target_element, _event_data, _event_position);
+                        with(_function_scope) _function(_target_element, _event_data, _event_position, other);
                     }
                     else if ((_function != undefined) && script_exists(_function))
                     {
-                        with(_function_scope) script_execute(_function, _target_element, _event_data, _event_position);
+                        with(_function_scope) script_execute(_function, _target_element, _event_data, _event_position, other);
                     }
                     else
                     {
@@ -942,11 +942,11 @@ function __scribble_class_typist(_per_line) constructor
         shader_set_uniform_i(_u_iTypewriterUseLines,          __per_line);
         shader_set_uniform_i(_u_iTypewriterMethod,            _method);
         shader_set_uniform_i(_u_iTypewriterCharMax,           _char_max);
-        shader_set_uniform_f(_u_fTypewriterSmoothness,        __smoothness);
-        shader_set_uniform_f(_u_vTypewriterStartPos,          __ease_dx, __ease_dy);
-        shader_set_uniform_f(_u_vTypewriterStartScale,        __ease_xscale, __ease_yscale);
-        shader_set_uniform_f(_u_fTypewriterStartRotation,     __ease_rotation);
-        shader_set_uniform_f(_u_fTypewriterAlphaDuration,     __ease_alpha_duration);
+        shader_set_uniform_f(_u_fTypewriterSmoothness,        real(__smoothness));
+        shader_set_uniform_f(_u_vTypewriterStartPos,          real(__ease_dx), real(__ease_dy));
+        shader_set_uniform_f(_u_vTypewriterStartScale,        real(__ease_xscale), real(__ease_yscale));
+        shader_set_uniform_f(_u_fTypewriterStartRotation,     real(__ease_rotation));
+        shader_set_uniform_f(_u_fTypewriterAlphaDuration,     real(__ease_alpha_duration));
         shader_set_uniform_f_array(_u_fTypewriterWindowArray, __window_array);
     }
     

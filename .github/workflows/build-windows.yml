@@ -1,0 +1,99 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - enhanced-soupgen
+    paths:
+      - ".github/workflows/build-windows.yml"
+      - "UTDR Textbox Gen/**"
+      - "SOUP"
+      - "tools/restore_gamemaker_prefabs.ps1"
+      - "tools/validate_fork.ps1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-vm:
+    name: Windows VM export
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      YYP_PATH: '${{ github.workspace }}/UTDR Textbox Gen/UTDR Textbox Gen.yyp'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate fork integrity
+        shell: pwsh
+        run: ./tools/validate_fork.ps1
+
+      - name: Prepare headless GMLive fallback
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE "UTDR Textbox Gen/scripts/GMLive/GMLive.fallback.gml"
+          $destination = Join-Path $env:GITHUB_WORKSPACE "UTDR Textbox Gen/scripts/GMLive/GMLive.gml"
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "GMLive fallback source is missing: $source"
+          }
+          Copy-Item -LiteralPath $source -Destination $destination -Force
+
+      - name: Require GameMaker access key
+        shell: pwsh
+        env:
+          ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ACCESS_KEY)) {
+            throw "Missing repository secret ACCESS_KEY. Generate a GameMaker access key and add it under Settings > Secrets and variables > Actions."
+          }
+
+      - name: Restore GameMaker prefabs
+        shell: pwsh
+        run: ./tools/restore_gamemaker_prefabs.ps1 -ProjectPath $env:YYP_PATH -ToolsRoot (Join-Path $env:RUNNER_TEMP "gamemaker-tools")
+
+      - name: Set up GameMaker Igor
+        id: igor
+        uses: bscotch/igor-setup@470beb959fbb8f6ff548134aa1de70fc09a879e6 # v3
+        with:
+          access-key: ${{ secrets.ACCESS_KEY }}
+          target-yyp: ${{ env.YYP_PATH }}
+          modules: windows
+          cache: "true"
+
+      - name: Build Windows VM package
+        id: build
+        uses: bscotch/igor-build@42d1030f6f76806f315567cef83fcf89c0d4224c # v1.3.3
+        with:
+          user-dir: ${{ steps.igor.outputs['user-dir'] }}
+          yyp-path: ${{ env.YYP_PATH }}
+          platform: windows
+          config: Default
+          yyc: "false"
+          save-logs: "true"
+          name: UTDR-SoupGen-Enhanced-Windows.zip
+
+      - name: Upload Windows build
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: UTDR-SoupGen-Enhanced-Windows
+          path: ${{ steps.build.outputs['out-dir'] }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Igor compiler log
+        if: ${{ always() && steps.build.outputs['log-dir'] != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: UTDR-SoupGen-Enhanced-Igor-log
+          path: ${{ steps.build.outputs['log-dir'] }}
+          if-no-files-found: ignore
+          retention-days: 14

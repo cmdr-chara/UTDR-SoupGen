@@ -1,4 +1,5 @@
 {
-  "game_version":"0.0.4",
-  "game_page":"https://github.com/SoupTaels/UTDR-Textbox-Soup",
+  "game_version":"1.6.9",
+  "game_page":"https://github.com/cmdr-chara/UTDR-SoupGen/releases",
+  "changelog":"- checksummed two-slot recovery and preferences|- bounded GIF export with verified finalization|- staged ZIP portrait import with validation and rollback|- GIF playback timing now matches the 60 FPS editor"
 }

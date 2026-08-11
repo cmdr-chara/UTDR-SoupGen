@@ -1,7 +1,7 @@
 {
   "$GMFont":"",
   "%Name":"fnt_abaddon",
-  "AntiAlias":1,
+  "AntiAlias":0,
   "applyKerning":0,
   "ascender":12,
   "ascenderOffset":0,
@@ -107,7 +107,7 @@
     "124":{"character":124,"h":18,"offset":1,"shift":3,"w":2,"x":224,"y":2,},
     "125":{"character":125,"h":18,"offset":1,"shift":7,"w":6,"x":216,"y":2,},
     "126":{"character":126,"h":18,"offset":1,"shift":9,"w":8,"x":32,"y":62,},
-    "9647":{"character":9647,"h":18,"offset":3,"shift":16,"w":10,"x":42,"y":62,},
+    "9647":{"character":9647,"h":18,"offset":3,"shift":16,"w":9,"x":42,"y":62,},
   },
   "hinting":0,
   "includeTTF":false,
@@ -124,7 +124,7 @@
   },
   "pointRounding":0,
   "ranges":[
-    {"lower":32,"upper":127,},
+    {"lower":32,"upper":255,},
     {"lower":9647,"upper":9647,},
   ],
   "regenerateBitmap":false,

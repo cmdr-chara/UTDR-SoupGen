@@ -2,18 +2,26 @@
 var soupstack_count = array_length(soupstack_spr), soupstack_i = 0;
 if ( soupstack_count == 0 ) { exit; } //Cancel early if there's nothing to draw
 
-if ( !abort ) { surface_save(soupstack_surf, soupstack_path); } //Save everything drawn to this surface, aka our stack of sprites
-else { with ( SYSTEMUI ) { dial_text_page = dial_text_page_c + 1; } }
+if ( !abort && surface_exists(soupstack_surf) ) { surface_save(soupstack_surf, soupstack_path); } //Save everything drawn to this surface, aka our stack of sprites
 
 repeat ( soupstack_count ) { 
 	sprite_delete(soupstack_spr[soupstack_i]); show_debug_message("Deleted sprite stack {0}/ {1}", soupstack_i, soupstack_count - 1);
 soupstack_i++; } //Delete all the sprites
 
-surface_free(soupstack_surf); //Free surface to prevent memory leaks
-
+if ( surface_exists(soupstack_surf) ) { surface_free(soupstack_surf); } //Free surface to prevent memory leaks
+MobileUtils_Vibrate_Shot(100);
 if ( !abort ) { 
-	soupy_message($"{soupstack_fname}.png[/] [rainbow][wave]saved at[/]| |[c_lime]{soupstack_path}![/]| |Your [c_gold]good soup[/] is ready!|The file path was [c_yellow]copied to your clipboard[/] and|the result will open up in your [c_cyan]default image viewer[/].", "I'm so soupy!!", , , , snd_dumbvictory, fnt_abaddon, , , true, 590);
-	execute_shell_simple($"{executable_get_directory()}{soupstack_folder}", , , 6); //Open the directory (Windows only)
-	execute_shell_simple(soupstack_path, , , 6); //Open the image in the PC's default photo viewer (Windows only)
-	clipboard_set_text(soupstack_path);
+	soupy_ui_success(soupstack_fname, , soupstack_path);
+	if ( global.pref.openresult ) {
+		if ( !is_android() ) { 
+			if ( !is_wasm() ) {
+				soupy_url($"{executable_get_directory()}{soupstack_folder}", , , 6); //Open the directory (Windows only)
+				soupy_url(soupstack_path, , , 6); //Open the image in the PC's default photo viewer (Windows only)
+			}
+		}
+		else { file_copy(soupstack_path, $"{soupstack_fname}_.png"); MobileUtils_Share_Open("Here's your good soup!", "image/png", $"{soupstack_fname}_.png"); }
+	}
+	if ( !is_wasm() ) { clipboard_set_text(soupstack_path); } else { var uri = data_uri(soupstack_path); if ( uri != -1 ) { soupy_url(uri); clipboard_set_text(uri); soup_store("datauri", uri, , true); } else { show_message_async("Error! Couldn't make Data URI!"); } }
+	if ( !is_android() ) { var temp = sprite_add(soupstack_path, 0, 0, 0, 0, 0); clipboard_set_sprite(temp); sprite_delete(temp); }
+	window_progress(window_progress_none); window_flash(window_flash_tray, 3, 350);
 }

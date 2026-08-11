@@ -8,11 +8,15 @@
 	#macro FACE_PREVIOUS obj_system.dial_face_prev[obj_system.dial_text_page] //Get the previous dialogue face
 	#macro FACE_INTERNAL obj_system.dial_face_name[obj_system.dial_text_page] //Get the internal name for the current dialogue face
 	#macro FACE_USING FACE_CURRENT != -1 && FACE_CURRENT != 0 //If the dialogue box will contain a face
-	#macro LAST_SAVED $"{executable_get_directory()}latest_soupy_last_typed.soupy" //Last text we typed
+	soup_store("android", $"{""}{PATHSEP}", , true);
+	#macro LAST_SAVED "latest_soupy_last_typed.soupy" //Primary crash-recovery journal slot in GameMaker's save area
+	#macro LAST_SAVED_BAK "latest_soupy_last_typed.bak.soupy" //Fallback crash-recovery journal slot
 	#macro AUTO_ASTERISK ( ( obj_system.dial_text_halign == 0 && obj_system.dial_text_valign == 0 ) && obj_system.dial_point_auto && string_trim(obj_system.dial_point_chr) != "" ) //Whether to enable auto-asterisk
 	#macro PATHSEP (( os_type == os_windows || os_type == os_xboxseriesxs || os_type == os_gdk ) ? "\\"  :  "/") //Get platform-dependant path
-	#macro PREF_SOUP $"{executable_get_directory()}soupy_preferences.soupy" //Settings to save
-	#macro GAME_VERSION "0.0.4" //Current game version
+	#macro PREF_SOUP "soupy_preferences.soupy" //Primary preferences journal slot in GameMaker's save area
+	#macro PREF_SOUP_BAK "soupy_preferences.bak.soupy" //Fallback preferences journal slot
+	#macro SOUPY_STORE_MARKER "@@SOUPY_STORE_V1@@\n"
+	#macro GAME_VERSION "1.6.9" //Current game version
 #endregion
 ///@desc Help Scribble with how to align the text
 function scribble_alignment(halign_ = 0, valign_ = 0) {
@@ -36,15 +40,16 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 
 #region Default functions for the menu buttons
 	function on_enter_() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_sel_switch); TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_yellow][wheel]{text_static}"; color_butt = c_yellow; } }
-	function on_leave_() { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = c_orange; } window_set_cursor(cr_default); }
+	function on_enter_a() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_sel_switch); TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_lime][wheel]{text_static}"; color_butt = c_lime; } }
+	function on_leave_() { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = SYSTEMUI.ui_accentcolor; } window_set_cursor(cr_default); }
 	function on_click_() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_select); SYSTEMUI.ui_tab = id_; on_reset_(); } else { sfx_play(snd_bump, , , random_range(0.8, 1.2)); } }
 	function on_hover_() { window_set_cursor(cr_drag); }
-	function on_reset_() { 
+	function on_reset_(update_ = true) { 
 		if ( !instance_exists(SYSTEMUI) ) { exit; }
-		SYSTEMUI.ui_reset();
+		SYSTEMUI.ui_reset(update_);
 		
 		var i = 0;
-		repeat ( array_length(SYSTEMUI.butt) ) { with ( SYSTEMUI.butt[i].data ) { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = c_orange; } else { TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_yellow][wheel]{text_static}"; color_butt = c_yellow; } } i++; }
+		repeat ( array_length(SYSTEMUI.butt) ) { with ( SYSTEMUI.butt[i].data ) { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = SYSTEMUI.ui_accentcolor; } else { TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_yellow][wheel]{text_static}"; color_butt = c_yellow; } } i++; }
 	}
 #endregion
 
@@ -58,10 +63,196 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 		txt_ = string_insert(insert_, txt_, cursor_); textinput.SetValue(txt_);
 		sfx_play(snd_bump); dial_updatet = 1; textinput.SetCaret(( cursor_ + string_length(insert_) ) - 1); 
 	}
+	
+	///@desc Adds textbox contents as a new macro
+	function soupy_context_macro() { 
+		var txt_ = textinput.GetValue();
+		
+		var arr_ = [
+			new LuiText({ value: "Add textbox contents as a new macro for reuse?", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
+			new LuiText({ value: "See all your macros in the Extras tab! Scroll to the bottom.", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
+			new LuiText({ value: "Labels must be uniquely named.", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
+			new LuiInput({ height: 40, placeholder: "Label (ex: uty_clover, wavyrainbow, soupytext, etc.)", offset: 12, type_sfx: snd_txttype, color_normal: c_white, color_hover: c_gray, }).addEvent(LUI_EV_CREATE, function(e_) { soup_store("label", e_, , true); }),
+			new LuiButton({ text: "Add new macro!", height: 40, }).addEvent(LUI_EV_CLICK, function () { 
+				var result = soup_checkout("label", false, true).get();
+				if ( string_trim(string_lettersdigits(result)) == "" ) { soupy_message("You cannot have a|blank or invalid label.", , 270, , , snd_error, , , true); exit; }
+				
+				var available = is_undefined(global.pref.macros[$ result]), text_ = SYSTEMUI.textinput.GetValue();
+				if ( string_trim(string_lettersdigits(text_)) == "" ) { soupy_message("Your textbox doesn't have|any text to add!", , 270, , , snd_error, , , true); exit; }
+				
+				if ( available ) { sfx_play(snd_sparkle2); sfx_play(snd_chest); global.pref.macros[$ result] = text_; SYSTEMUI.save_pref(); soup_checkout("mainui", , true).destroy(); SYSTEMUI.ui_paused = false; }
+				else { soupy_message("A macro with this|label already exists.", , 270, , , snd_error, , , true); }
+			}),
+		];
+		
+		var mainui = soupy_popup(arr_, , "Cancel", , , , snd_dimbox, fnt_abaddon); soup_store("mainui", mainui, , true);
+	}
 #endregion
 
+///@desc Reads a complete UTF-8 text file without exposing a partially created buffer.
+function soupy_store_read_file(path_) {
+	var buffer_ = -1, result_ = undefined;
+	try {
+		buffer_ = buffer_load(path_);
+		if ( buffer_exists(buffer_) ) {
+			result_ = buffer_get_size(buffer_) > 0 ? buffer_read(buffer_, buffer_text) : "";
+		}
+	} catch (error_) {
+		show_debug_message($"SoupGen could not read storage slot '{path_}': {error_.message}");
+	}
+
+	if ( buffer_exists(buffer_) ) { buffer_delete(buffer_); }
+	return result_;
+}
+
+///@desc Validates one checksummed journal slot. Invalid or torn writes are ignored.
+function soupy_store_read_slot(path_, kind_) {
+	var raw_ = soupy_store_read_file(path_);
+	if ( is_undefined(raw_) || !string_starts_with(raw_, SOUPY_STORE_MARKER) ) { return undefined; }
+
+	var envelope_ = undefined;
+	try {
+		var json_ = string_delete(raw_, 1, string_length(SOUPY_STORE_MARKER));
+		envelope_ = json_parse(json_, undefined, true);
+	} catch (error_) {
+		show_debug_message($"SoupGen ignored corrupt storage slot '{path_}': {error_.message}");
+		return undefined;
+	}
+
+	if ( !is_struct(envelope_) ) { return undefined; }
+	var format_ = envelope_[$ "format"], stored_kind_ = envelope_[$ "kind"];
+	var generation_ = envelope_[$ "generation"], checksum_ = envelope_[$ "checksum"], payload_ = envelope_[$ "payload"];
+	if ( format_ != 1 || stored_kind_ != kind_ || !is_numeric(generation_) || generation_ < 1 || floor(generation_) != generation_
+		|| !is_string(checksum_) || !is_string(payload_) ) { return undefined; }
+	var checksum_input_ = $"{stored_kind_}\n{generation_}\n{payload_}";
+	if ( checksum_ != md5_string_utf8(checksum_input_) ) { return undefined; }
+
+	return { valid: true, path: path_, generation: generation_, payload: payload_, };
+}
+
+///@desc Returns the newest valid journal slot, retaining the older generation as fallback.
+function soupy_store_read(primary_, backup_, kind_) {
+	var primary_data_ = soupy_store_read_slot(primary_, kind_);
+	var backup_data_ = soupy_store_read_slot(backup_, kind_);
+	if ( is_undefined(primary_data_) ) { return backup_data_; }
+	if ( is_undefined(backup_data_) ) { return primary_data_; }
+	return primary_data_.generation >= backup_data_.generation ? primary_data_ : backup_data_;
+}
+
+///@desc Writes the inactive journal slot and accepts it only after a checksum-verified reload.
+function soupy_store_write(primary_, backup_, kind_, payload_) {
+	if ( !is_string(payload_) ) { return false; }
+
+	var previous_ = soupy_store_read(primary_, backup_, kind_);
+	var generation_ = is_undefined(previous_) ? 1 : previous_.generation + 1;
+	var target_ = !is_undefined(previous_) && previous_.path == primary_ ? backup_ : primary_;
+	var checksum_ = md5_string_utf8($"{kind_}\n{generation_}\n{payload_}");
+	var envelope_ = {
+		format: 1,
+		kind: kind_,
+		generation: generation_,
+		checksum: checksum_,
+		payload: payload_,
+	};
+	var encoded_ = SOUPY_STORE_MARKER + json_stringify(envelope_);
+	var buffer_ = -1, write_ok_ = false;
+
+	try {
+		buffer_ = buffer_create(max(1, string_byte_length(encoded_)), buffer_fixed, 1);
+		buffer_write(buffer_, buffer_text, encoded_);
+		buffer_save(buffer_, target_);
+	} catch (error_) {
+		show_debug_message($"SoupGen could not write storage slot '{target_}': {error_.message}");
+	}
+	if ( buffer_exists(buffer_) ) { buffer_delete(buffer_); }
+
+	var verified_ = soupy_store_read_slot(target_, kind_);
+	write_ok_ = !is_undefined(verified_)
+		&& verified_.generation == generation_
+		&& verified_.payload == payload_
+		&& md5_string_utf8($"{kind_}\n{generation_}\n{verified_.payload}") == checksum_;
+	if ( !write_ok_ ) { show_debug_message($"SoupGen rejected an unverified write to storage slot '{target_}'."); }
+	return write_ok_;
+}
+
+///@desc Resolves the old pre-journal storage location for migration fallback.
+function soupy_store_legacy_path(filename_) {
+	if ( is_android() ) {
+		if ( !instance_exists(SYSTEMUI) || SYSTEMUI.android_path == "" ) { return ""; }
+		return soup_checkout("android", false, true) + filename_;
+	}
+	if ( is_wasm() || os_browser != browser_not_a_browser ) { return ""; }
+	return executable_get_directory() + filename_;
+}
+
+///@desc Validates a pre-journal payload before migration.
+function soupy_store_validate_legacy_payload(payload_, kind_) {
+	if ( is_undefined(payload_) || string_starts_with(payload_, SOUPY_STORE_MARKER) ) { return undefined; }
+
+	if ( kind_ == "preferences" ) {
+		var parsed_ = undefined;
+		try { parsed_ = json_parse(payload_); } catch (error_) { return undefined; }
+		if ( !is_struct(parsed_) ) { return undefined; }
+	}
+	return payload_;
+}
+
+///@desc Loads and validates a legacy payload from the old external location.
+function soupy_store_read_legacy(filename_, kind_) {
+	var legacy_path_ = soupy_store_legacy_path(filename_);
+	if ( legacy_path_ == "" ) { return undefined; }
+	return soupy_store_validate_legacy_payload(soupy_store_read_file(legacy_path_), kind_);
+}
+
+///@desc Reads a journal payload, migrating a valid pre-1.6.9 file when needed.
+function soupy_store_payload(primary_, backup_, kind_, legacy_filename_) {
+	var stored_ = soupy_store_read(primary_, backup_, kind_);
+	if ( !is_undefined(stored_) ) { return stored_.payload; }
+
+	// Pre-journal browser builds used these same relative names without an envelope.
+	var raw_primary_ = soupy_store_validate_legacy_payload(soupy_store_read_file(primary_), kind_);
+	if ( !is_undefined(raw_primary_) ) {
+		if ( !soupy_store_write(backup_, primary_, kind_, raw_primary_) ) { show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate the primary raw slot."); }
+		return raw_primary_;
+	}
+	var raw_backup_ = soupy_store_validate_legacy_payload(soupy_store_read_file(backup_), kind_);
+	if ( !is_undefined(raw_backup_) ) {
+		if ( !soupy_store_write(primary_, backup_, kind_, raw_backup_) ) { show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate the fallback raw slot."); }
+		return raw_backup_;
+	}
+
+	var legacy_ = soupy_store_read_legacy(legacy_filename_, kind_);
+	if ( is_undefined(legacy_) ) { return undefined; }
+	// Seed the backup slot first so migration never overwrites the only legacy copy.
+	if ( !soupy_store_write(backup_, primary_, kind_, legacy_) ) {
+		show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate it to the journal.");
+	}
+	return legacy_;
+}
+
+///@desc Saves the latest dialogue text for crash recovery.
+function soupy_save_last_typed(text_) {
+	return soupy_store_write(LAST_SAVED, LAST_SAVED_BAK, "recovery", text_);
+}
+
+///@desc Loads the newest valid dialogue recovery generation.
+function soupy_load_last_typed() {
+	return soupy_store_payload(LAST_SAVED, LAST_SAVED_BAK, "recovery", "latest_soupy_last_typed.soupy");
+}
+
+///@desc Applies saved dialogue recovery to the live editor when available.
+function soupy_restore_last_typed() {
+	var result_ = soupy_load_last_typed();
+	var system_ = instance_find(SYSTEMUI, 0);
+	if ( is_undefined(result_) || !instance_exists(system_) ) { return false; }
+	system_.dial_text = result_;
+	system_.dial_text_page_c = scribble(result_).get_page_count();
+	system_.textinput.SetValue(result_);
+	return true;
+}
+
 function TextChange(txt, point) : UndoableChange() constructor { //Handle undo/ redoing changes
-	live_auto_call
+	//live_auto_call
 	prev_txt = SYSTEMUI.dial_text; //Store previous/ inital text
 	point_prev = SYSTEMUI.textinput.GetCaret(); //Get previous point
 	mytxt = txt; //Get our new text
@@ -69,17 +260,19 @@ function TextChange(txt, point) : UndoableChange() constructor { //Handle undo/ 
 
 	static can_apply = function() { return ( SYSTEMUI.dial_text != mytxt ); } //Don't push the same unchanged text to the undo stack
 	static apply = function() { with ( obj_system ) { //Apply recent changes
-		dial_text = other.mytxt; 
+		dial_text = other.mytxt; dial_text_page_c = scribble(dial_text).get_page_count();
 		textinput.SetValue(dial_text);
-		
-		var lasttyped = file_text_open_write(LAST_SAVED);
-		file_text_write_string(lasttyped, dial_text); //Save what the user last typed
-		file_text_close(lasttyped);
+		soupy_save_last_typed(dial_text);
 		
 		textinput.SetCaret(other.point_); } 
 		sfx_play(snd_updated); 
 	}
-    static undo = function() { with ( obj_system ) { dial_text = other.prev_txt; textinput.SetValue(dial_text); textinput.SetCaret(other.point_prev); } sfx_play(snd_throw); }
+	static undo = function() { with ( obj_system ) {
+		dial_text = other.prev_txt; dial_text_page_c = scribble(dial_text).get_page_count();
+		textinput.SetValue(dial_text);
+		soupy_save_last_typed(dial_text);
+		textinput.SetCaret(other.point_prev);
+	} sfx_play(snd_throw); }
 }
 
 ///@desc Create a GUI button. Accepts { x, y, text, padd_(x1, y1, x2, y2, multi), leeway, x2, y2, sprite, draw_nine, index, (x)(y)scale, angle, font, color, color_butt, halign, and valign, and functions for on_enter(runs once), on_hover, on_leave(once), on_click(once), on_held, on_released(once) }
@@ -124,10 +317,15 @@ function Button(datastruct_ = undefined) constructor {
 	}
 }
 
+///@desc Platform-based url opening
+function soupy_url(path_, args_ = "", act_ = "", cmd_ = 5, webview_ = true) {
+	if ( !is_android() ) { if ( !is_wasm() ) { execute_shell_simple(path_, args_, act_, cmd_); } else { url_open(path_); } } 
+	else { if ( webview_ ) { if ( !is_android_wasm() ) { webview_open_url(path_); webview_allow_swipe_refresh(true); webview_set_borderless(true); webview_button_set_auto_close(webview_button_create(30, WebViewButtonGravity.CenterHorizontal | WebViewButtonGravity.Top), true); } else { url_open(path_); } } else { url_open(path_); } }
+}
+
 ///@desc Manages state for UI tabs.
 function ui_manage() {
 	//live_auto_call 
-	if ( ui_tab != 0 || !ui_visible ) { exit; }
 	#region Update Text
 		var update_text = function() { //Update text function
 			undo_stack_begin_move(); 
@@ -150,6 +348,29 @@ function ui_manage() {
 				}
 				if ( upd_ ) { dial_updatet = dial_updatet_max; } //Start timer
 			}
+			
+			if ( is_android() ) { 
+				if ( keyboard_check_pressed(vk_backspace) ) { var c_ = textinput.GetCaret(), str_ = string_delete(textinput.GetValue(), c_, 1); textinput.SetValue(str_); textinput.SetCaret(c_ - 1); keyboard_string = ""; sfx_play(snd_bump, , , random_range(0.7, 1.3)); }
+				if ( keyboard_string != "" ) { 
+					var c_ = textinput.GetCaret(), str_ = string_insert(ui_captial ? string_upper(keyboard_string) : keyboard_string, textinput.GetValue(), c_ + 1); textinput.SetValue(str_); textinput.SetCaret(c_ + 1);
+					keyboard_string = ""; 
+				}
+				
+				//Since virtual keyboards are weird, we have to catch whether the textbox was updated or not
+				var previnput = textinput.GetValue(), getnext = soup_checkout("nextinput", false, true);
+				if ( !is_undefined(getnext) && previnput != getnext ) { sfx_play(snd_txttype, , , random_range(0.7, 1.3)); dial_updatet = dial_updatet_max; upd_ = true; }
+				soup_store("nextinput", textinput.GetValue(), , true);
+				
+				#region Bring Up Context Menu
+					if ( textinput.GetSelection().has_selection ) {
+						if ( !mouse_check ) {
+							soupy_alarm("contextmenu", 15);
+							if ( soupy_alarm_moment("contextmenu", 0) ) { sfx_play(snd_select); soup_store("rightclick", , , true); }
+						}
+					}
+					else { soupy_alarm_set("contextmenu", "timer", 15); }
+				#endregion
+			}
 					
 			if ( keyboard_check_pressed(vk_anykey) ) { //Typing sounds
 				if ( upd_ ) { sfx_play(snd_txttype, , , random_range(0.7, 1.3)); } //Play typing sounds for unbanned keys
@@ -165,8 +386,8 @@ function ui_manage() {
 			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("Z")) ) { //Undo/ redo
 				if ( !keyboard_check(vk_shift) ) { undo_stack_undo(); } else { undo_stack_redo(); } 
 			}
-			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("S")) ) { soupy_context_clear(); } //Clear All
 			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("D")) ) { soupy_context_page(); } //Insert Page Break
+			if ( keyboard_check(vk_control) && keyboard_check_pressed(ord("P")) ) { soupy_context_macro(); } //Text Macro
 		}
 	#endregion
 
@@ -177,7 +398,7 @@ function ui_manage() {
 					if ( variable_instance_get(obj_system, "within_hover4") == undefined ) { variable_instance_set(obj_system, "within_hover4", false); }
 					if ( variable_instance_get(obj_system, "yscale_4") == undefined ) { variable_instance_set(obj_system, "yscale_4", 1); }
 		
-					var x_ = 10, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 30, y_ + 5);
+					var x_ = 10, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 40) && range_within(mouse_y_gui, y_ - 30, y_ + 30);
 					if ( within_ ) {
 						if ( !within_hover4 ) { within_hover4 = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw); dial_text_page = approach(dial_text_page, 0, 1); yscale_4 = 0.5; } //Pressed
@@ -201,7 +422,7 @@ function ui_manage() {
 					if ( variable_instance_get(obj_system, "within_hover5") == undefined ) { variable_instance_set(obj_system, "within_hover5", false); }
 					if ( variable_instance_get(obj_system, "yscale_5") == undefined ) { variable_instance_set(obj_system, "yscale_5", 1); }
 		
-					var x_ = 630, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 30, y_ + 5);
+					var x_ = 630, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 20) && range_within(mouse_y_gui, y_ - 30, y_ + 30);
 					if ( within_ ) {
 						if ( !within_hover5 ) { within_hover5 = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw); dial_text_page = approach(dial_text_page, dial_text_page_c, 1); yscale_5 = 0.5; } //Pressed
@@ -222,7 +443,7 @@ function ui_manage() {
 			#endregion
 			#region Page Indicator Text
 				if ( dial_text_page_c > 1 && bord_visible ) {
-					var pageind = scribble($"[offset,0,3]< Page {dial_text_page + 1}/ {dial_text_page_c} >[offsetpop] [spr_effects_icons,16]")
+					var pageind = scribble($"< Page {dial_text_page + 1}/ {dial_text_page_c} > [offset,0,-2][spr_effects_icons,16][offsetpop]")
 											.starting_format("fnt_abaddon", c_gray)
 											.align(fa_center, fa_middle)
 											.draw(320, 333)
@@ -270,7 +491,7 @@ function ui_manage() {
 		if ( variable_instance_get(obj_system, "colors_get") == undefined ) { variable_instance_set(obj_system, "colors_get", __scribble_config_colours()); }
 		draw_sprite_ext(spr_pixel, 0, 158 - 2, 68 - 2, 429 + 4, 14 + 4, 0, c_white, 1); //Palette Outline White
 		draw_sprite_ext(spr_pixel, 0, 158, 68, 429, 14, 0, rgb(39, 31, 54), 1); //Palette Back
-		var colors_ = ["c_red", "c_yellow", "c_blue", "c_lime", "c_aqua", "c_cyan", "c_purple", "c_orange", "c_maroon", "c_fuchsia", "c_gold", "c_white", "c_ltgray", "c_gray", "c_dkgray", "c_black"], colors_i = 0, colors_len = array_length(colors_); //Available colors
+		var colors_ = ["c_red", "c_yellow", "c_blue", "c_lime", "c_aqua", "c_cyan", "c_purple", "c_orange", "c_maroon", "c_pink", "c_gold", "c_white", "c_ltgray", "c_gray", "c_dkgray", "c_black"], colors_i = 0, colors_len = array_length(colors_); //Available colors
 		repeat ( colors_len ) {
 			var colors_cur = colors_[colors_i]; //Current color
 			var butt_data = { x: 160 + ( 27 * colors_i ), y: 70, sprite: spr_color_button, draw_nine: false, leeway: 3, color_butt: colors_get[$ colors_cur], color_butt_hover: merge_color(colors_get[$ colors_cur], color_get_value(colors_get[$ colors_cur]) > 150 ? c_black : c_white, 0.3), on_click: method({ colors_cur }, function () { SYSTEMUI.butt_func(colors_cur, true); }), on_click_right: method({ colors_cur }, function () { 
@@ -291,7 +512,7 @@ function ui_manage() {
 			if ( effects_i > 5 ) { continue; }
 			var effects_true = effects_i + ui_effoff;
 			var effects_cur = effects_[effects_true]; //Current effect
-			var butt_data = { x: 180 + ( 75 * effects_i ), y: 95, color_butt: c_orange, color_butt_hover: c_yellow, color: c_black, text: $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) } 
+			var butt_data = { x: 180 + ( 75 * effects_i ), y: 95, color_butt: ui_accentcolor, color_butt_hover: c_yellow, color: c_black, text: $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) } 
 			var butt_ = new Button(butt_data); butt_.update(); //Create button
 		effects_i++; }
 				
@@ -300,7 +521,7 @@ function ui_manage() {
 				if ( variable_instance_get(obj_system, "within_hover") == undefined ) { variable_instance_set(obj_system, "within_hover", false); }
 				if ( variable_instance_get(obj_system, "yscale_") == undefined ) { variable_instance_set(obj_system, "yscale_", 1); }
 				if ( ui_effoff < effects_off ) {
-					var x_ = 605, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 5, x_ + 20) && range_within(mouse_y_gui, y_ - 5, y_ + 5);
+					var x_ = 605, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 10, 640) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hover ) { within_hover = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 1.3); ui_effoff = approach(ui_effoff, effects_off, 1); yscale_ = 0.5; } //Pressed
@@ -315,7 +536,7 @@ function ui_manage() {
 				if ( variable_instance_get(obj_system, "within_hover2") == undefined ) { variable_instance_set(obj_system, "within_hover2", false); }
 				if ( variable_instance_get(obj_system, "yscale_2") == undefined ) { variable_instance_set(obj_system, "yscale_2", 1); }
 				if ( ui_effoff > 0 ) {
-					var x_ = 130, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 5) && range_within(mouse_y_gui, y_ - 5, y_ + 5);
+					var x_ = 130, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 10) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hover2 ) {within_hover2 = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 0.7); ui_effoff = approach(ui_effoff, 0, 1); yscale_2 = 0.5; } //Pressed
@@ -358,13 +579,13 @@ function ui_manage() {
 			
 	#region Clear Page Face
 		var resettime = 60;
-		if ( bord_visible && FACE_CURRENT != -1 && ( range_within(mouse_x_gui, 40, 174) && range_within(mouse_y_gui, 323, 480) ) && mouse_check_right ) { //Hovering over the dialogue portrait
+		if ( bord_visible && FACE_CURRENT != -1 && ( range_within(mouse_x_gui, 40 + dial_face_xoff_static, 174 + dial_face_xoff_static) && range_within(mouse_y_gui, 323 + dial_face_yoff_static, 480 + dial_face_yoff_static) ) && mouse_check_right ) { //Hovering over the dialogue portrait
 			if ( variable_instance_get(obj_system, "within_hoverindex") != undefined && !within_hoverindex ) && ( variable_instance_get(obj_system, "within_hoverindex2") != undefined && !within_hoverindex2 ) {
 				soupy_alarm("removeface", resettime);
 				soupy_alarm_run("removeface", 1, function () { FACE_CURRENT = -1; FACE_ORIGINAL = -1; FACE_PREVIOUS = -1; sfx_play(snd_hurtpowerful); }); //Timer to clear face
 
-				draw_sprite_stretched_ext(spr_border_undertale, 0, 40, 323, 134, 136, c_red, 0.7); //BG
-				var ringcalc = map_value(soupy_alarm_get("removeface", "timer", false), 0, resettime, 0, 360), textx = 110, texty = 390; //Turn the values of a timer into a range of degrees
+				draw_sprite_stretched_ext(spr_border_undertale, 0, 40 + dial_face_xoff_static, 323 + dial_face_yoff_static, 134, 136, c_red, 0.7); //BG
+				var ringcalc = map_value(soupy_alarm_get("removeface", "timer", false), 0, resettime, 0, 360), textx = 110 + dial_face_xoff_static, texty = 390 + dial_face_yoff_static; //Turn the values of a timer into a range of degrees
 				var updatering = CleanRing(textx, texty, 20, 30, 360, ringcalc) //Update text ring
 													.Blend(c_red, 1)
 													.Draw();
@@ -376,13 +597,13 @@ function ui_manage() {
 	#endregion
 			
 	#region Quick Index & Sprite Switching 
-		if ( UI_MESSAGE && bord_visible && ( range_within(mouse_x_gui, 20, 180) && range_within(mouse_y_gui, 300, 480) ) ) { //Hovering over the dialogue portrait
+		if ( UI_MESSAGE && bord_visible && ( range_within(mouse_x_gui, 20 + dial_face_xoff_static, 180 + dial_face_xoff_static) && range_within(mouse_y_gui, 300 + dial_face_yoff_static, 480 + dial_face_yoff_static) ) ) { //Hovering over the dialogue portrait
 			#region Back Index
-				if ( FACE_INDEX > 0 && FACE_CURRENT != -1 ) { 
+				if ( FACE_SPEED == 0 && FACE_INDEX > 0 && FACE_CURRENT != -1 ) { 
 					if ( variable_instance_get(obj_system, "within_hoverindex") == undefined ) { variable_instance_set(obj_system, "within_hoverindex", false); }
 					if ( variable_instance_get(obj_system, "yscale_index") == undefined ) { variable_instance_set(obj_system, "yscale_index", 1); }
 					
-					var x_ = 110, y_ = 325, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
+					var x_ = 110 + dial_face_xoff_static, y_ = 325 + dial_face_yoff_static, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hoverindex ) { within_hoverindex = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) {  sfx_play(snd_bump, 0, , 1.3); FACE_INDEX = approach(FACE_INDEX, 0, 1); yscale_index = 0.5; } //Pressed
@@ -395,11 +616,11 @@ function ui_manage() {
 				else { variable_instance_set(obj_system, "within_hoverindex", false); }
 			#endregion
 			#region Forward Index
-				if ( FACE_INDEX < sprite_get_number(FACE_CURRENT) - 1 && FACE_CURRENT != -1 ) {
+				if ( FACE_SPEED == 0 && FACE_INDEX < sprite_get_number(FACE_CURRENT) - 1 && FACE_CURRENT != -1 ) {
 					if ( variable_instance_get(obj_system, "within_hoverindex2") == undefined ) { variable_instance_set(obj_system, "within_hoverindex2", false); }
 					if ( variable_instance_get(obj_system, "yscale_index2") == undefined ) { variable_instance_set(obj_system, "yscale_index2", 1); }
 					
-					var x_ = 110, y_ = 457, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
+					var x_ = 110 + dial_face_xoff_static, y_ = 457 + dial_face_yoff_static, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hoverindex2 ) { within_hoverindex2 = true; sfx_play(snd_sel_switch); } //Hover
 						if ( mouse_pressed ) {  sfx_play(snd_bump, 0, , 1.3); FACE_INDEX = approach(FACE_INDEX, sprite_get_number(FACE_CURRENT) - 1, 1); yscale_index2 = 0.5; } //Pressed
@@ -412,7 +633,7 @@ function ui_manage() {
 				else { variable_instance_set(obj_system, "within_hoverindex2", false); }
 			#endregion
 			#region Switch Sprite
-				if ( keyboard_check(vk_control) && FACE_CURRENT != -1 ) { if ( mouse_pressed ) { external_choose_face(); } else if ( mouse_pressed_right ) { soupy_color_picker_portrait(); } }
+				if ( keyboard_check(vk_control) ) { if ( mouse_pressed ) { external_choose_face(); } else if ( mouse_pressed_right ) { soupy_color_picker_portrait(); } }
 			#endregion
 		}
 		
@@ -426,7 +647,7 @@ function ui_manage() {
 			if ( variable_instance_get(obj_system, "within_hover3") == undefined ) { variable_instance_set(obj_system, "within_hover3", false); }
 			if ( variable_instance_get(obj_system, "yscale_3") == undefined ) { variable_instance_set(obj_system, "yscale_3", 1); }
 		
-			var x_ = 320, y_ = 473, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 30, y_ + 5);
+			var x_ = 320, y_ = 473, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 40) && range_within(mouse_y_gui, y_ - 40, y_ + 50);
 			if ( within_ ) {
 				if ( !within_hover3 ) { within_hover3 = true; sfx_play(snd_sel_switch); } //Hover
 				if ( mouse_pressed ) {  sfx_play(snd_enc1, 0, , bord_visible ? 0.7 : 1.3); bord_visible = !bord_visible; yscale_3 = 0.5; } //Pressed
@@ -439,7 +660,7 @@ function ui_manage() {
 			
 	#region Create Mini Face
 		if ( UI_MESSAGE ) {
-			var xx_ = 632, yy_ = 470, within_ = range_within(mouse_x_gui, xx_ - 40, xx_ + 20) && range_within(mouse_y_gui, yy_ - 40, yy_ + 20);
+			var xx_ = 632, yy_ = 470, within_ = range_within(mouse_x_gui, xx_ - 60, xx_ + 20) && range_within(mouse_y_gui, yy_ - 60, yy_ + 20);
 			if ( variable_instance_get(obj_system, "within_mini") == undefined ) { variable_instance_set(obj_system, "within_mini", false); }
 			if ( variable_instance_get(obj_system, "within_mini_off") == undefined ) { variable_instance_set(obj_system, "within_mini_off", false); }
 			if ( within_ ) {

@@ -55,7 +55,7 @@ function LuiBase(_params = {}) constructor {
 	self.render_content_enabled = true;
 	self.need_to_update_content = false;
 	self.main_ui = undefined;
-	self.tooltip = ""; self.tooltip_center = false; self.tooltip_font = undefined; self.tooltip_scribble = false;
+	self.tooltip = ""; self.tooltip_center = false; self.tooltip_font = undefined; self.tooltip_scribble = false; self.tooltip_wrap = -1;
 	self.binded_variable = undefined;
 	self.is_pressed = false;
 	self.is_mouse_hovered = false;
@@ -698,8 +698,8 @@ function LuiBase(_params = {}) constructor {
 	}
 	
 	///@desc Set popup text to element when mouse on it, and whether it should be centered
-	static setTooltip = function(_string, _center = false, _font = undefined, _scrib = false) {
-		self.tooltip = _string; self.tooltip_center = _center; self.tooltip_font = _font; self.tooltip_scribble = _scrib;
+	static setTooltip = function(_string, _center = false, _font = undefined, _scrib = false, _wrap = -1) {
+		self.tooltip = _string; self.tooltip_center = _center; self.tooltip_font = _font; self.tooltip_scribble = _scrib; self.tooltip_wrap = _wrap;
 		return self;
 	}
 	
@@ -854,6 +854,7 @@ function LuiBase(_params = {}) constructor {
 	    // Recursively update depth_array for all children
 	    for (var i = 0, n = array_length(self.content); i < n; i++) {
 	        var _element = self.content[i];
+			if ( !is_array(self.depth_array) ) { self.depth_array = [self.z]; }
 	        _element.depth_array = array_concat(self.depth_array, [_element.z]);
 	        // Recursively update children's children
 	        _element.setDepth(_element.z); // Reuse setDepth to update children
@@ -1487,6 +1488,7 @@ function LuiBase(_params = {}) constructor {
 			// Init depth
 			_element.nesting_level = self.nesting_level + 1;
 			_element.z = global.lui_max_z++;
+			if ( !is_array(self.depth_array) ) { exit; }
 			_element.depth_array = array_concat(self.depth_array, [_element.z]);
 			
 			// Inherit variables
