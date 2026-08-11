@@ -196,8 +196,15 @@ $remotes = & git -C $repository remote -v
 if ($LASTEXITCODE -ne 0) {
     throw 'Could not read Git remotes'
 }
-Assert-Condition (($remotes -join "`n") -match 'origin\s+https://github\.com/cmdr-chara/UTDR-SoupGen\.git') 'origin does not point to the fork'
-Assert-Condition (($remotes -join "`n") -match 'upstream\s+https://github\.com/SoupTaels/UTDR-SoupGen\.git') 'upstream does not point to SoupTaels'
+$remoteText = $remotes -join "`n"
+Assert-Condition ($remoteText -match 'origin\s+https://github\.com/cmdr-chara/UTDR-SoupGen(?:\.git)?(?:\s|$)') 'origin does not point to the fork'
+
+if ($env:GITHUB_ACTIONS -eq 'true') {
+    Assert-Condition ([string]::Equals($env:GITHUB_REPOSITORY, 'cmdr-chara/UTDR-SoupGen', [StringComparison]::OrdinalIgnoreCase)) 'GitHub Actions is running outside the fork repository'
+}
+else {
+    Assert-Condition ($remoteText -match 'upstream\s+https://github\.com/SoupTaels/UTDR-SoupGen(?:\.git)?(?:\s|$)') 'upstream does not point to SoupTaels'
+}
 
 [pscustomobject]@{
     JsonFiles = $jsonFiles.Count
