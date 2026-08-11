@@ -10,7 +10,7 @@ var errorfunc = function (txt_, w_ = undefined) { soupy_message(txt_, , w_, , , 
 #region Dropping Files
 	if ( UI_MESSAGE ) {
 		if ( async_result[?"event_type"] == "file_drop" && fpath != undefined ) {
-			if ( fext == ".zip" ) { //Bulk load face sprites
+			if ( string_lower(fext) == ".zip" ) { //Bulk load face sprites
 				var arr_ = [
 					new LuiText({ value: "Bulk import .zip of face sprites?", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
 					new LuiText({ value: "These sprites will also be added for auto-loading.", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
@@ -18,9 +18,7 @@ var errorfunc = function (txt_, w_ = undefined) { soupy_message(txt_, , w_, , , 
 						SYSTEMUI.ui_paused = false; SYSTEMUI.file_dragging = false;
 						
 						var data = e_.getData("filedata");
-						var bulk = zip_unzip_async(data.fpath, filename_path(data.fpath));
-						soup_store("bulkload", { id: bulk, fpath: data.fpath, fext: data.fext, fname: data.fname, finalpath: string_replace(data.fpath, ".zip", ""), }, , true);
-						sfx_play(snd_equip);
+						if ( soupy_zip_begin(data.fpath) ) { sfx_play(snd_equip); }
 						
 						soup_checkout("bulkimport").destroy();
 					}),

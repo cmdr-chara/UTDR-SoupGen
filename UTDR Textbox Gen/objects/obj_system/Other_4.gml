@@ -1,12 +1,5 @@
 ///@desc Recovery and Error Handling
-if ( file_exists(LAST_SAVED) ) {
-	var lasttyped = buffer_load(LAST_SAVED);
-	if ( buffer_exists(lasttyped) ) {
-		var result = buffer_get_size(lasttyped) > 0 ? buffer_read(lasttyped, buffer_text) : ""; //Restore the complete multiline input
-		buffer_delete(lasttyped);
-		dial_text = result; dial_text_page_c = scribble(dial_text).get_page_count(); textinput.SetValue(dial_text);
-	}
-}
+soupy_restore_last_typed();
 
 if ( file_exists(errname) ) {
 	var buff = buffer_load(errname); //Load file

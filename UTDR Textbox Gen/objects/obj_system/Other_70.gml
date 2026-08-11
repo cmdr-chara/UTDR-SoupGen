@@ -9,6 +9,7 @@ switch ( get_[? "type"] ) {
 		file_text_close(oLog);
 		MobileUtils_Vibrate_Shot(50);
 		ui_loadprefs();
+		soupy_restore_last_typed(); //Also migrates recovery from the legacy SAF folder when present.
 	} break;
 	
 	case "saf_request_get_directory": {
@@ -16,6 +17,7 @@ switch ( get_[? "type"] ) {
 		if ( android_path == "" ) { android_path = intent_saf_request(SAF_REQUEST_SEARCH_DIRECTORY); exit; }
 		soup_store("android", $"{android_path}{PATHSEP}", , true);
 		ui_loadprefs();
+		soupy_restore_last_typed(); //Also migrates recovery from the legacy SAF folder when present.
 		sfx_play(snd_dumbvictory);
 		soup_checkout("firsttime", , true).destroy();
 		ui_paused = false;

@@ -7,7 +7,7 @@ function ui_init() {
 		screenshot_stacked = false; //Whether dialogue exports are stacked
 		screenshot_surf = -1; //Screenshot surface
 		screenshot_back = global.pref.gifbgclr; //Color for GIF background clearing
-		record = { enabled: false, type: 0, frames: 0, framesmax: 0, id_: -1, quant: 1, delay: 60, }; //Whether to record, the type of recording(0 - static, 1 - wait for dialogue to finish), and how long to record for
+		record = { enabled: false, type: 0, frames: 0, framesmax: 0, frames_total: 0, frames_limit: 0, frame_bytes: 0, byte_limit: 0, id_: -1, quant: 1, delay: 60, failed: false, }; //Whether to record, the type of recording(0 - static, 1 - wait for dialogue to finish), and how long to record for
 		ui_visible = true; //Whether the UI should be visible
 		ui_effoff = 0; //Effects array offset 
 		ui_tab_yoff = 0; //Y offset for the orange and white borders
@@ -816,7 +816,15 @@ function ui_init() {
 				
 			///@desc Toggle between different exporting types and export the dialogue
 			ui_export = function(type_ = 0, fmax_ = 180, delay_ = 60, quant_ = 1, xoff_ = 0, yoff_ = 0) {
-				if ( !ui_preview && !ui_finished ) { soup_store("tablast", ui_tab, , true); ui_tab = -1; ui_reset(false); ui_visible = false; soup_store("lastpage", dial_text_page, , true); }
+				var frame_value = real_ext(fmax_), delay_value = real_ext(delay_), quant_value = real_ext(quant_);
+				fmax_ = max(1, floor(frame_value == "" ? 180 : frame_value));
+				delay_ = max(0, floor(delay_value == "" ? 60 : delay_value));
+				quant_ = clamp(floor(quant_value == "" ? 1 : quant_value), 0, 3);
+
+				if ( !ui_preview && !ui_finished ) {
+					soup_store("tablast", ui_tab, , true); ui_tab = -1; ui_reset(false); ui_visible = false; soup_store("lastpage", dial_text_page, , true);
+					with ( record ) { frames = 0; framesmax = 0; frames_total = 0; frames_limit = 0; frame_bytes = 0; byte_limit = 0; id_ = -1; failed = false; }
+				}
 				if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_equip);
 				if ( instance_exists(obj_mini) ) { with ( obj_mini ) { if ( sticker ) { once = true; alpha = 1; active = true; } } }
 				soupy_alarm_set("failsafe", "timer", 15);

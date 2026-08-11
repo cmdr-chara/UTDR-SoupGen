@@ -9,11 +9,14 @@
 	#macro FACE_INTERNAL obj_system.dial_face_name[obj_system.dial_text_page] //Get the internal name for the current dialogue face
 	#macro FACE_USING FACE_CURRENT != -1 && FACE_CURRENT != 0 //If the dialogue box will contain a face
 	soup_store("android", $"{""}{PATHSEP}", , true);
-	#macro LAST_SAVED $"{!is_android() ? executable_get_directory() : soup_checkout("android", false, true)}latest_soupy_last_typed.soupy" //Last text we typed
+	#macro LAST_SAVED "latest_soupy_last_typed.soupy" //Primary crash-recovery journal slot in GameMaker's save area
+	#macro LAST_SAVED_BAK "latest_soupy_last_typed.bak.soupy" //Fallback crash-recovery journal slot
 	#macro AUTO_ASTERISK ( ( obj_system.dial_text_halign == 0 && obj_system.dial_text_valign == 0 ) && obj_system.dial_point_auto && string_trim(obj_system.dial_point_chr) != "" ) //Whether to enable auto-asterisk
 	#macro PATHSEP (( os_type == os_windows || os_type == os_xboxseriesxs || os_type == os_gdk ) ? "\\"  :  "/") //Get platform-dependant path
-	#macro PREF_SOUP $"{!is_android() ? executable_get_directory() : soup_checkout("android", false, true)}soupy_preferences.soupy" //Settings to save
-	#macro GAME_VERSION "1.6.8" //Current game version
+	#macro PREF_SOUP "soupy_preferences.soupy" //Primary preferences journal slot in GameMaker's save area
+	#macro PREF_SOUP_BAK "soupy_preferences.bak.soupy" //Fallback preferences journal slot
+	#macro SOUPY_STORE_MARKER "@@SOUPY_STORE_V1@@\n"
+	#macro GAME_VERSION "1.6.9" //Current game version
 #endregion
 ///@desc Help Scribble with how to align the text
 function scribble_alignment(halign_ = 0, valign_ = 0) {
@@ -86,13 +89,166 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 	}
 #endregion
 
+///@desc Reads a complete UTF-8 text file without exposing a partially created buffer.
+function soupy_store_read_file(path_) {
+	var buffer_ = -1, result_ = undefined;
+	try {
+		buffer_ = buffer_load(path_);
+		if ( buffer_exists(buffer_) ) {
+			result_ = buffer_get_size(buffer_) > 0 ? buffer_read(buffer_, buffer_text) : "";
+		}
+	} catch (error_) {
+		show_debug_message($"SoupGen could not read storage slot '{path_}': {error_.message}");
+	}
+
+	if ( buffer_exists(buffer_) ) { buffer_delete(buffer_); }
+	return result_;
+}
+
+///@desc Validates one checksummed journal slot. Invalid or torn writes are ignored.
+function soupy_store_read_slot(path_, kind_) {
+	var raw_ = soupy_store_read_file(path_);
+	if ( is_undefined(raw_) || !string_starts_with(raw_, SOUPY_STORE_MARKER) ) { return undefined; }
+
+	var envelope_ = undefined;
+	try {
+		var json_ = string_delete(raw_, 1, string_length(SOUPY_STORE_MARKER));
+		envelope_ = json_parse(json_, undefined, true);
+	} catch (error_) {
+		show_debug_message($"SoupGen ignored corrupt storage slot '{path_}': {error_.message}");
+		return undefined;
+	}
+
+	if ( !is_struct(envelope_) ) { return undefined; }
+	var format_ = envelope_[$ "format"], stored_kind_ = envelope_[$ "kind"];
+	var generation_ = envelope_[$ "generation"], checksum_ = envelope_[$ "checksum"], payload_ = envelope_[$ "payload"];
+	if ( format_ != 1 || stored_kind_ != kind_ || !is_numeric(generation_) || generation_ < 1 || floor(generation_) != generation_
+		|| !is_string(checksum_) || !is_string(payload_) ) { return undefined; }
+	var checksum_input_ = $"{stored_kind_}\n{generation_}\n{payload_}";
+	if ( checksum_ != md5_string_utf8(checksum_input_) ) { return undefined; }
+
+	return { valid: true, path: path_, generation: generation_, payload: payload_, };
+}
+
+///@desc Returns the newest valid journal slot, retaining the older generation as fallback.
+function soupy_store_read(primary_, backup_, kind_) {
+	var primary_data_ = soupy_store_read_slot(primary_, kind_);
+	var backup_data_ = soupy_store_read_slot(backup_, kind_);
+	if ( is_undefined(primary_data_) ) { return backup_data_; }
+	if ( is_undefined(backup_data_) ) { return primary_data_; }
+	return primary_data_.generation >= backup_data_.generation ? primary_data_ : backup_data_;
+}
+
+///@desc Writes the inactive journal slot and accepts it only after a checksum-verified reload.
+function soupy_store_write(primary_, backup_, kind_, payload_) {
+	if ( !is_string(payload_) ) { return false; }
+
+	var previous_ = soupy_store_read(primary_, backup_, kind_);
+	var generation_ = is_undefined(previous_) ? 1 : previous_.generation + 1;
+	var target_ = !is_undefined(previous_) && previous_.path == primary_ ? backup_ : primary_;
+	var checksum_ = md5_string_utf8($"{kind_}\n{generation_}\n{payload_}");
+	var envelope_ = {
+		format: 1,
+		kind: kind_,
+		generation: generation_,
+		checksum: checksum_,
+		payload: payload_,
+	};
+	var encoded_ = SOUPY_STORE_MARKER + json_stringify(envelope_);
+	var buffer_ = -1, write_ok_ = false;
+
+	try {
+		buffer_ = buffer_create(max(1, string_byte_length(encoded_)), buffer_fixed, 1);
+		buffer_write(buffer_, buffer_text, encoded_);
+		buffer_save(buffer_, target_);
+	} catch (error_) {
+		show_debug_message($"SoupGen could not write storage slot '{target_}': {error_.message}");
+	}
+	if ( buffer_exists(buffer_) ) { buffer_delete(buffer_); }
+
+	var verified_ = soupy_store_read_slot(target_, kind_);
+	write_ok_ = !is_undefined(verified_)
+		&& verified_.generation == generation_
+		&& verified_.payload == payload_
+		&& md5_string_utf8($"{kind_}\n{generation_}\n{verified_.payload}") == checksum_;
+	if ( !write_ok_ ) { show_debug_message($"SoupGen rejected an unverified write to storage slot '{target_}'."); }
+	return write_ok_;
+}
+
+///@desc Resolves the old pre-journal storage location for migration fallback.
+function soupy_store_legacy_path(filename_) {
+	if ( is_android() ) {
+		if ( !instance_exists(SYSTEMUI) || SYSTEMUI.android_path == "" ) { return ""; }
+		return soup_checkout("android", false, true) + filename_;
+	}
+	if ( is_wasm() || os_browser != browser_not_a_browser ) { return ""; }
+	return executable_get_directory() + filename_;
+}
+
+///@desc Validates a pre-journal payload before migration.
+function soupy_store_validate_legacy_payload(payload_, kind_) {
+	if ( is_undefined(payload_) || string_starts_with(payload_, SOUPY_STORE_MARKER) ) { return undefined; }
+
+	if ( kind_ == "preferences" ) {
+		var parsed_ = undefined;
+		try { parsed_ = json_parse(payload_); } catch (error_) { return undefined; }
+		if ( !is_struct(parsed_) ) { return undefined; }
+	}
+	return payload_;
+}
+
+///@desc Loads and validates a legacy payload from the old external location.
+function soupy_store_read_legacy(filename_, kind_) {
+	var legacy_path_ = soupy_store_legacy_path(filename_);
+	if ( legacy_path_ == "" ) { return undefined; }
+	return soupy_store_validate_legacy_payload(soupy_store_read_file(legacy_path_), kind_);
+}
+
+///@desc Reads a journal payload, migrating a valid pre-1.6.9 file when needed.
+function soupy_store_payload(primary_, backup_, kind_, legacy_filename_) {
+	var stored_ = soupy_store_read(primary_, backup_, kind_);
+	if ( !is_undefined(stored_) ) { return stored_.payload; }
+
+	// Pre-journal browser builds used these same relative names without an envelope.
+	var raw_primary_ = soupy_store_validate_legacy_payload(soupy_store_read_file(primary_), kind_);
+	if ( !is_undefined(raw_primary_) ) {
+		if ( !soupy_store_write(backup_, primary_, kind_, raw_primary_) ) { show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate the primary raw slot."); }
+		return raw_primary_;
+	}
+	var raw_backup_ = soupy_store_validate_legacy_payload(soupy_store_read_file(backup_), kind_);
+	if ( !is_undefined(raw_backup_) ) {
+		if ( !soupy_store_write(primary_, backup_, kind_, raw_backup_) ) { show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate the fallback raw slot."); }
+		return raw_backup_;
+	}
+
+	var legacy_ = soupy_store_read_legacy(legacy_filename_, kind_);
+	if ( is_undefined(legacy_) ) { return undefined; }
+	// Seed the backup slot first so migration never overwrites the only legacy copy.
+	if ( !soupy_store_write(backup_, primary_, kind_, legacy_) ) {
+		show_debug_message($"SoupGen loaded legacy {kind_}, but could not migrate it to the journal.");
+	}
+	return legacy_;
+}
+
 ///@desc Saves the latest dialogue text for crash recovery.
 function soupy_save_last_typed(text_) {
-	var text_bytes_ = string_byte_length(text_);
-	var lasttyped = buffer_create(max(1, text_bytes_), buffer_fixed, 1);
-	if ( text_bytes_ > 0 ) { buffer_write(lasttyped, buffer_text, text_); }
-	buffer_save(lasttyped, LAST_SAVED);
-	buffer_delete(lasttyped);
+	return soupy_store_write(LAST_SAVED, LAST_SAVED_BAK, "recovery", text_);
+}
+
+///@desc Loads the newest valid dialogue recovery generation.
+function soupy_load_last_typed() {
+	return soupy_store_payload(LAST_SAVED, LAST_SAVED_BAK, "recovery", "latest_soupy_last_typed.soupy");
+}
+
+///@desc Applies saved dialogue recovery to the live editor when available.
+function soupy_restore_last_typed() {
+	var result_ = soupy_load_last_typed();
+	var system_ = instance_find(SYSTEMUI, 0);
+	if ( is_undefined(result_) || !instance_exists(system_) ) { return false; }
+	system_.dial_text = result_;
+	system_.dial_text_page_c = scribble(result_).get_page_count();
+	system_.textinput.SetValue(result_);
+	return true;
 }
 
 function TextChange(txt, point) : UndoableChange() constructor { //Handle undo/ redoing changes

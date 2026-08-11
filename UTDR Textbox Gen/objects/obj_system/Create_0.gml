@@ -4,9 +4,9 @@ android_path = ""; //Safe path to save stuff in
 if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 #region Loading Preferences
 	ui_loadprefs = function () { 
-			if ( file_exists(PREF_SOUP) ) {
-			var buff_ = buffer_load(PREF_SOUP), data_ = buffer_read(buff_, buffer_text), pref_ = undefined;
-			buffer_delete(buff_);
+			var data_ = soupy_store_payload(PREF_SOUP, PREF_SOUP_BAK, "preferences", "soupy_preferences.soupy");
+			if ( !is_undefined(data_) ) {
+			var pref_ = undefined;
 			try { pref_ = json_parse(data_); } catch(err_) { show_debug_message(err_.message); }
 	
 			if ( is_struct(pref_) ) {
@@ -516,8 +516,9 @@ ui_init();
 	
 	save_pref = function () {
 		var data_ = json_stringify(global.pref);
-		var buff_ = buffer_create(string_byte_length(data_), buffer_fixed, 1);
-		buffer_write(buff_, buffer_text, data_); buffer_save(buff_, PREF_SOUP); buffer_delete(buff_);
+		if ( !soupy_store_write(PREF_SOUP, PREF_SOUP_BAK, "preferences", data_) ) {
+			show_debug_message("SoupGen could not verify the preferences journal write.");
+		}
 	}
 	
 	save_preset = function (label_ = "") {

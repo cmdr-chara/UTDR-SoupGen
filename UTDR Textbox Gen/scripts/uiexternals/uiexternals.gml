@@ -358,6 +358,493 @@ pref = {
 #endregion
 
 #region Functions
+	#region Safe ZIP face imports
+		#macro SOUPY_ZIP_MAX_ARCHIVE_BYTES (64 * 1024 * 1024)
+		#macro SOUPY_ZIP_MAX_ENTRIES 512
+		#macro SOUPY_ZIP_MAX_ENTRY_BYTES (16 * 1024 * 1024)
+		#macro SOUPY_ZIP_MAX_TOTAL_BYTES (128 * 1024 * 1024)
+		#macro SOUPY_ZIP_MAX_RATIO 100
+		#macro SOUPY_ZIP_MAX_FRAMES 256
+		#macro SOUPY_ZIP_MAX_SPRITE_SIDE 4096
+		#macro SOUPY_ZIP_MAX_TEXTURE_SIDE 8192
+		#macro SOUPY_ZIP_MAX_IMAGE_PIXELS (16 * 1024 * 1024)
+		#macro SOUPY_ZIP_MAX_TOTAL_PIXELS (64 * 1024 * 1024)
+
+		function soupy_zip_starts_with(value_, prefix_) {
+			return string_length(value_) >= string_length(prefix_) && string_copy(value_, 1, string_length(prefix_)) == prefix_;
+		}
+
+		function soupy_zip_ends_with(value_, suffix_) {
+			var value_len_ = string_length(value_), suffix_len_ = string_length(suffix_);
+			return value_len_ >= suffix_len_ && string_copy(value_, value_len_ - suffix_len_ + 1, suffix_len_) == suffix_;
+		}
+
+		function soupy_zip_error_string(error_) {
+			if ( is_struct(error_) && variable_struct_exists(error_, "message") ) { return string(error_.message); }
+			return string(error_);
+		}
+
+		function soupy_zip_report_error(message_) {
+			show_debug_message($"ZIP face import failed: {message_}");
+			soupy_message($"ZIP import failed.|{message_}", "OK", 460, , , snd_error, fnt_abaddon, , SYSTEMUI.ui_paused, true);
+		}
+
+		function soupy_zip_u16(buffer_, offset_) {
+			return buffer_peek(buffer_, offset_, buffer_u8)
+				+ buffer_peek(buffer_, offset_ + 1, buffer_u8) * 256;
+		}
+
+		function soupy_zip_u32(buffer_, offset_) {
+			return int64(buffer_peek(buffer_, offset_, buffer_u8))
+				+ int64(buffer_peek(buffer_, offset_ + 1, buffer_u8)) * 256
+				+ int64(buffer_peek(buffer_, offset_ + 2, buffer_u8)) * 65536
+				+ int64(buffer_peek(buffer_, offset_ + 3, buffer_u8)) * 16777216;
+		}
+
+		function soupy_zip_u32_be(buffer_, offset_) {
+			return int64(buffer_peek(buffer_, offset_, buffer_u8)) * 16777216
+				+ int64(buffer_peek(buffer_, offset_ + 1, buffer_u8)) * 65536
+				+ int64(buffer_peek(buffer_, offset_ + 2, buffer_u8)) * 256
+				+ int64(buffer_peek(buffer_, offset_ + 3, buffer_u8));
+		}
+
+		/// @desc Validate an extracted PNG before GameMaker decodes it into a texture.
+		function soupy_zip_png_info(path_, expected_crc_) {
+			var png_buffer_ = -1;
+			try {
+				png_buffer_ = buffer_load(path_);
+				if ( !buffer_exists(png_buffer_) || buffer_get_used_size(png_buffer_) < 24 ) { throw "PNG header is missing or truncated."; }
+				var signature_ = [137, 80, 78, 71, 13, 10, 26, 10];
+				for ( var signature_i_ = 0; signature_i_ < array_length(signature_); signature_i_++; ) {
+					if ( buffer_peek(png_buffer_, signature_i_, buffer_u8) != signature_[signature_i_] ) { throw "A file has a .png name but not a PNG signature."; }
+				}
+				if ( soupy_zip_u32_be(png_buffer_, 8) != 13
+					|| buffer_peek(png_buffer_, 12, buffer_u8) != 73 || buffer_peek(png_buffer_, 13, buffer_u8) != 72
+					|| buffer_peek(png_buffer_, 14, buffer_u8) != 68 || buffer_peek(png_buffer_, 15, buffer_u8) != 82 ) {
+					throw "The PNG does not begin with a valid IHDR chunk.";
+				}
+
+				var actual_crc_ = buffer_crc32(png_buffer_, 0, buffer_get_used_size(png_buffer_));
+				if ( actual_crc_ < 0 ) { actual_crc_ += 4294967296; }
+				if ( int64(actual_crc_) != int64(expected_crc_) ) { throw "An extracted PNG failed its ZIP CRC32 check."; }
+
+				var width_ = soupy_zip_u32_be(png_buffer_, 16), height_ = soupy_zip_u32_be(png_buffer_, 20);
+				if ( width_ < 1 || height_ < 1 ) { throw "PNG dimensions must be positive."; }
+				return { width: width_, height: height_, pixels: width_ * height_, };
+			}
+			finally {
+				if ( buffer_exists(png_buffer_) ) { buffer_delete(png_buffer_); }
+			}
+		}
+
+		function soupy_zip_ascii(buffer_, offset_, length_) {
+			var result_ = "";
+			for ( var i_ = 0; i_ < length_; i_++; ) {
+				var byte_ = buffer_peek(buffer_, offset_ + i_, buffer_u8);
+				if ( is_undefined(byte_) || byte_ < 32 || byte_ > 126 ) { throw "ZIP entry names must use printable ASCII characters."; }
+				result_ += chr(byte_);
+			}
+			return result_;
+		}
+
+		function soupy_zip_safe_segment(segment_) {
+			if ( segment_ == "" || string_length(segment_) > 64 ) { return false; }
+			var allowed_ = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+			for ( var i_ = 1; i_ <= string_length(segment_); i_++; ) {
+				if ( string_pos(string_char_at(segment_, i_), allowed_) == 0 ) { return false; }
+			}
+			var upper_ = string_upper(segment_);
+			if ( upper_ == "CON" || upper_ == "PRN" || upper_ == "AUX" || upper_ == "NUL" ) { return false; }
+			if ( string_length(upper_) == 4 ) {
+				var prefix_ = string_copy(upper_, 1, 3), suffix_ = string_char_at(upper_, 4);
+				if ( (prefix_ == "COM" || prefix_ == "LPT") && string_pos(suffix_, "123456789") > 0 ) { return false; }
+			}
+			return true;
+		}
+
+		function soupy_zip_entry_path(raw_path_) {
+			if ( raw_path_ == "" || string_length(raw_path_) > 240 ) { throw "A ZIP entry has an invalid path length."; }
+			if ( string_pos("\\", raw_path_) > 0 ) { throw "Backslashes are not allowed in ZIP entry paths."; }
+			if ( string_char_at(raw_path_, 1) == "/" || string_pos(":", raw_path_) > 0 || string_pos("//", raw_path_) > 0 ) {
+				throw "A ZIP entry uses an absolute or ambiguous path.";
+			}
+
+			var is_directory_ = soupy_zip_ends_with(raw_path_, "/");
+			var normalized_ = is_directory_ ? string_delete(raw_path_, string_length(raw_path_), 1) : raw_path_;
+			if ( normalized_ == "" ) { throw "The ZIP contains an invalid root entry."; }
+
+			var segments_ = string_split(normalized_, "/", false);
+			for ( var i_ = 0; i_ < array_length(segments_); i_++; ) {
+				var segment_ = segments_[i_];
+				if ( segment_ == "" || segment_ == "." || segment_ == ".."
+					|| !soupy_zip_safe_segment(segment_) && (is_directory_ || i_ < array_length(segments_) - 1) ) {
+					throw "A ZIP entry contains an unsafe directory name.";
+				}
+			}
+			return { path: normalized_, segments: segments_, is_directory: is_directory_, };
+		}
+
+		function soupy_zip_face_filename(character_, filename_) {
+			if ( string_lower(filename_ext(filename_)) != ".png" ) { throw "Face packs may only contain PNG files."; }
+			var basename_ = filename_change_ext(filename_, ""), basename_lower_ = string_lower(basename_);
+			if ( !soupy_zip_safe_segment(basename_) ) { throw $"Invalid face filename: {filename_}"; }
+
+			var frames_ = 1, stem_ = basename_;
+			var strip_pos_ = string_pos("_strip", basename_lower_);
+			if ( strip_pos_ > 0 ) {
+				if ( string_count("_strip", basename_lower_) != 1 ) { throw $"Invalid strip filename: {filename_}"; }
+				var digits_ = string_copy(basename_, strip_pos_ + 6, string_length(basename_) - strip_pos_ - 5);
+				if ( digits_ == "" || string_digits(digits_) != digits_ ) { throw $"Invalid strip frame count: {filename_}"; }
+				frames_ = real(digits_);
+				if ( frames_ < 1 || frames_ > SOUPY_ZIP_MAX_FRAMES ) { throw $"Strip frame count is outside 1-{SOUPY_ZIP_MAX_FRAMES}: {filename_}"; }
+				stem_ = string_copy(basename_, 1, strip_pos_ - 1);
+			}
+
+			var prefix_ = $"spr_{string_lower(character_)}_", stem_lower_ = string_lower(stem_);
+			var expression_ = soupy_zip_starts_with(stem_lower_, prefix_)
+				? string_copy(stem_, string_length(prefix_) + 1, string_length(stem_) - string_length(prefix_))
+				: stem_;
+			if ( expression_ == "" || !soupy_zip_safe_segment(expression_) || string_digits(expression_) != "" ) {
+				throw $"Invalid face expression name: {filename_}";
+			}
+			return { expression: expression_, frames: frames_, };
+		}
+
+		function soupy_zip_validate_extra(buffer_, offset_, length_) {
+			var end_ = offset_ + length_, position_ = offset_;
+			while ( position_ < end_ ) {
+				if ( position_ + 4 > end_ ) { throw "A ZIP extra field is truncated."; }
+				var tag_ = soupy_zip_u16(buffer_, position_);
+				var size_ = soupy_zip_u16(buffer_, position_ + 2);
+				position_ += 4;
+				if ( position_ + size_ > end_ ) { throw "A ZIP extra field has an invalid size."; }
+				// Only timestamp and NTFS metadata are accepted. In particular, reject ZIP64 and Unicode path overrides.
+				if ( tag_ != $5455 && tag_ != $000A ) { throw $"Unsupported ZIP extra field: 0x{string(tag_)}"; }
+				position_ += size_;
+			}
+		}
+
+		/// @desc Inspect the central directory and matching local headers before extraction.
+		/// This intentionally supports a conservative ZIP subset: ASCII paths, stored/deflate PNG files, no ZIP64 or encryption.
+		function soupy_zip_preflight(zip_path_) {
+			var zip_buffer_ = -1;
+			try {
+				var disk_size_ = file_size(zip_path_);
+				if ( disk_size_ <= 0 || disk_size_ > SOUPY_ZIP_MAX_ARCHIVE_BYTES ) { throw "Archive size is invalid or exceeds 64 MiB."; }
+
+				zip_buffer_ = buffer_load(zip_path_);
+				if ( zip_buffer_ == -1 ) { throw "The archive could not be read."; }
+				var zip_size_ = buffer_get_used_size(zip_buffer_);
+				if ( zip_size_ < 22 || zip_size_ > SOUPY_ZIP_MAX_ARCHIVE_BYTES ) { throw "The archive is empty, truncated, or too large."; }
+
+				var eocd_ = -1, search_min_ = max(0, zip_size_ - 65557);
+				for ( var pos_ = zip_size_ - 22; pos_ >= search_min_; pos_--; ) {
+					if ( soupy_zip_u32(zip_buffer_, pos_) == $06054B50 ) {
+						var comment_length_ = soupy_zip_u16(zip_buffer_, pos_ + 20);
+						if ( pos_ + 22 + comment_length_ == zip_size_ ) { eocd_ = pos_; break; }
+					}
+				}
+				if ( eocd_ < 0 ) { throw "The ZIP end record is missing or malformed."; }
+
+				var disk_number_ = soupy_zip_u16(zip_buffer_, eocd_ + 4);
+				var central_disk_ = soupy_zip_u16(zip_buffer_, eocd_ + 6);
+				var disk_entries_ = soupy_zip_u16(zip_buffer_, eocd_ + 8);
+				var entry_count_ = soupy_zip_u16(zip_buffer_, eocd_ + 10);
+				var central_size_ = soupy_zip_u32(zip_buffer_, eocd_ + 12);
+				var central_offset_ = soupy_zip_u32(zip_buffer_, eocd_ + 16);
+				if ( disk_number_ != 0 || central_disk_ != 0 || disk_entries_ != entry_count_ ) { throw "Multi-disk ZIP files are not supported."; }
+				if ( entry_count_ == $FFFF || central_size_ == $FFFFFFFF || central_offset_ == $FFFFFFFF ) { throw "ZIP64 archives are not supported."; }
+				if ( entry_count_ < 1 || entry_count_ > SOUPY_ZIP_MAX_ENTRIES ) { throw $"Archive entry count is outside 1-{SOUPY_ZIP_MAX_ENTRIES}."; }
+				if ( central_offset_ < 0 || central_size_ < 0 || central_offset_ + central_size_ > eocd_ ) { throw "The ZIP central directory points outside the archive."; }
+
+				var files_ = [], seen_paths_ = {}, seen_faces_ = {}, seen_offsets_ = {};
+				var central_pos_ = central_offset_, total_bytes_ = 0, layout_depth_ = -1, wrapper_ = "";
+				for ( var entry_i_ = 0; entry_i_ < entry_count_; entry_i_++; ) {
+					if ( central_pos_ + 46 > eocd_ || soupy_zip_u32(zip_buffer_, central_pos_) != $02014B50 ) { throw "A central directory entry is truncated or invalid."; }
+
+					var made_by_ = soupy_zip_u16(zip_buffer_, central_pos_ + 4);
+					var flags_ = soupy_zip_u16(zip_buffer_, central_pos_ + 8);
+					var method_ = soupy_zip_u16(zip_buffer_, central_pos_ + 10);
+					var crc_ = soupy_zip_u32(zip_buffer_, central_pos_ + 16);
+					var compressed_ = soupy_zip_u32(zip_buffer_, central_pos_ + 20);
+					var uncompressed_ = soupy_zip_u32(zip_buffer_, central_pos_ + 24);
+					var name_length_ = soupy_zip_u16(zip_buffer_, central_pos_ + 28);
+					var extra_length_ = soupy_zip_u16(zip_buffer_, central_pos_ + 30);
+					var entry_comment_length_ = soupy_zip_u16(zip_buffer_, central_pos_ + 32);
+					var entry_disk_ = soupy_zip_u16(zip_buffer_, central_pos_ + 34);
+					var external_attributes_ = soupy_zip_u32(zip_buffer_, central_pos_ + 38);
+					var local_offset_ = soupy_zip_u32(zip_buffer_, central_pos_ + 42);
+					var central_end_ = central_pos_ + 46 + name_length_ + extra_length_ + entry_comment_length_;
+					if ( name_length_ < 1 || central_end_ > eocd_ ) { throw "A ZIP entry has invalid field lengths."; }
+					if ( entry_disk_ != 0 || compressed_ == $FFFFFFFF || uncompressed_ == $FFFFFFFF || local_offset_ == $FFFFFFFF ) { throw "ZIP64 or split entries are not supported."; }
+					if ( (flags_ & $F7F1) != 0 ) { throw "Encrypted or unsupported ZIP entry flags are not allowed."; }
+					if ( method_ != 0 && method_ != 8 ) { throw "Only stored and deflated ZIP entries are supported."; }
+					if ( method_ == 0 && (flags_ & 6) != 0 ) { throw "Stored ZIP entries cannot use deflate option flags."; }
+
+					var raw_name_ = soupy_zip_ascii(zip_buffer_, central_pos_ + 46, name_length_);
+					soupy_zip_validate_extra(zip_buffer_, central_pos_ + 46 + name_length_, extra_length_);
+					var entry_path_ = soupy_zip_entry_path(raw_name_);
+					var path_key_ = string_lower(entry_path_.path);
+					if ( variable_struct_exists(seen_paths_, path_key_) ) { throw $"Duplicate ZIP path: {entry_path_.path}"; }
+					seen_paths_[$ path_key_] = true;
+
+					var host_os_ = (made_by_ >> 8) & $FF;
+					var unix_kind_ = (external_attributes_ >> 16) & $F000;
+					if ( host_os_ == 3 && unix_kind_ != 0 && unix_kind_ != $4000 && unix_kind_ != $8000 ) { throw "Links and special filesystem entries are not allowed in face packs."; }
+					if ( host_os_ == 3 && entry_path_.is_directory != (unix_kind_ == $4000) && unix_kind_ != 0 ) { throw "A ZIP entry's path and filesystem type disagree."; }
+
+					if ( local_offset_ + 30 > central_offset_ || soupy_zip_u32(zip_buffer_, local_offset_) != $04034B50 ) { throw "A ZIP local header is missing or outside the data area."; }
+					var local_flags_ = soupy_zip_u16(zip_buffer_, local_offset_ + 6);
+					var local_method_ = soupy_zip_u16(zip_buffer_, local_offset_ + 8);
+					var local_crc_ = soupy_zip_u32(zip_buffer_, local_offset_ + 14);
+					var local_compressed_ = soupy_zip_u32(zip_buffer_, local_offset_ + 18);
+					var local_uncompressed_ = soupy_zip_u32(zip_buffer_, local_offset_ + 22);
+					var local_name_length_ = soupy_zip_u16(zip_buffer_, local_offset_ + 26);
+					var local_extra_length_ = soupy_zip_u16(zip_buffer_, local_offset_ + 28);
+					var local_data_ = local_offset_ + 30 + local_name_length_ + local_extra_length_;
+					if ( local_data_ > central_offset_ || local_data_ + compressed_ > central_offset_ ) { throw "A ZIP entry's compressed data is outside the data area."; }
+					var local_name_ = soupy_zip_ascii(zip_buffer_, local_offset_ + 30, local_name_length_);
+					soupy_zip_validate_extra(zip_buffer_, local_offset_ + 30 + local_name_length_, local_extra_length_);
+					if ( local_name_ != raw_name_ || local_flags_ != flags_ || local_method_ != method_ ) { throw "Central and local ZIP headers do not match."; }
+					if ( (flags_ & 8) == 0 ) {
+						if ( local_crc_ != crc_ || local_compressed_ != compressed_ || local_uncompressed_ != uncompressed_ ) { throw "Central and local ZIP sizes or checksums do not match."; }
+					}
+					else {
+						if ( local_crc_ != 0 && local_crc_ != crc_ || local_compressed_ != 0 && local_compressed_ != compressed_
+							|| local_uncompressed_ != 0 && local_uncompressed_ != uncompressed_ ) { throw "A streamed ZIP entry has contradictory local metadata."; }
+						var descriptor_ = local_data_ + compressed_;
+						if ( descriptor_ + 12 > central_offset_ ) { throw "A ZIP data descriptor is truncated."; }
+						if ( soupy_zip_u32(zip_buffer_, descriptor_) == $08074B50 ) { descriptor_ += 4; }
+						if ( descriptor_ + 12 > central_offset_ || soupy_zip_u32(zip_buffer_, descriptor_) != crc_
+							|| soupy_zip_u32(zip_buffer_, descriptor_ + 4) != compressed_ || soupy_zip_u32(zip_buffer_, descriptor_ + 8) != uncompressed_ ) {
+							throw "A ZIP data descriptor does not match the inspected entry.";
+						}
+					}
+					var offset_key_ = string(local_offset_);
+					if ( variable_struct_exists(seen_offsets_, offset_key_) ) { throw "Multiple entries share one local ZIP header."; }
+					seen_offsets_[$ offset_key_] = true;
+
+					if ( entry_path_.is_directory ) {
+						if ( compressed_ != 0 || uncompressed_ != 0 ) { throw "Directory entries in a face pack must be empty."; }
+					}
+					else {
+						if ( compressed_ > SOUPY_ZIP_MAX_ENTRY_BYTES || uncompressed_ > SOUPY_ZIP_MAX_ENTRY_BYTES ) { throw $"ZIP entry exceeds {SOUPY_ZIP_MAX_ENTRY_BYTES div (1024 * 1024)} MiB: {entry_path_.path}"; }
+						if ( uncompressed_ > 0 && compressed_ == 0 ) { throw "A non-empty ZIP entry has no compressed data."; }
+						if ( compressed_ > 0 && uncompressed_ > 1024 * 1024 && uncompressed_ > compressed_ * SOUPY_ZIP_MAX_RATIO ) { throw "A ZIP entry exceeds the allowed compression ratio."; }
+						total_bytes_ += uncompressed_;
+						if ( total_bytes_ > SOUPY_ZIP_MAX_TOTAL_BYTES ) { throw "The archive exceeds 128 MiB when unpacked."; }
+
+						var segments_ = entry_path_.segments, depth_ = array_length(segments_);
+						if ( depth_ != 2 && depth_ != 3 ) { throw "PNG files must use character/file.png, optionally inside one wrapper folder."; }
+						if ( layout_depth_ == -1 ) {
+							layout_depth_ = depth_;
+							wrapper_ = depth_ == 3 ? string_lower(segments_[0]) : "";
+						}
+						if ( depth_ != layout_depth_ || depth_ == 3 && string_lower(segments_[0]) != wrapper_ ) { throw "All PNG files must use one consistent archive layout."; }
+
+						var character_ = segments_[depth_ - 2], filename_ = segments_[depth_ - 1];
+						if ( !soupy_zip_safe_segment(character_) ) { throw $"Invalid character folder: {character_}"; }
+						var face_info_ = soupy_zip_face_filename(character_, filename_);
+						var face_key_ = $"{string_lower(character_)}|{string_lower(face_info_.expression)}";
+						if ( variable_struct_exists(seen_faces_, face_key_) ) { throw $"Duplicate face alias: {character_}/{face_info_.expression}"; }
+						seen_faces_[$ face_key_] = true;
+						array_push(files_, {
+							path: entry_path_.path,
+							character: character_,
+							filename: filename_,
+							expression: face_info_.expression,
+							frames: face_info_.frames,
+							crc: crc_,
+							uncompressed_size: uncompressed_,
+						});
+					}
+					central_pos_ = central_end_;
+				}
+
+				if ( central_pos_ != central_offset_ + central_size_ ) { throw "The ZIP central directory contains unsupported trailing records."; }
+				if ( array_length(files_) == 0 ) { throw "The archive contains no importable PNG faces."; }
+				return { ok: true, files: files_, archive_size: zip_size_, unpacked_size: total_bytes_, };
+			}
+			catch ( error_ ) {
+				return { ok: false, error: soupy_zip_error_string(error_), files: [], };
+			}
+			finally {
+				if ( buffer_exists(zip_buffer_) ) { buffer_delete(zip_buffer_); }
+			}
+		}
+
+		function soupy_zip_canonical(path_) {
+			var result_ = string_replace_all(filename_canonical(path_), "\\", "/");
+			return os_type == os_windows ? string_lower(result_) : result_;
+		}
+
+		function soupy_zip_trim_directory_path(path_) {
+			var result_ = path_;
+			while ( string_length(result_) > 1 && (soupy_zip_ends_with(result_, "/") || soupy_zip_ends_with(result_, "\\")) ) {
+				result_ = string_delete(result_, string_length(result_), 1);
+			}
+			return result_;
+		}
+
+		function soupy_zip_path_within(root_canonical_, path_) {
+			var path_canonical_ = soupy_zip_canonical(path_);
+			var prefix_ = soupy_zip_ends_with(root_canonical_, "/") ? root_canonical_ : root_canonical_ + "/";
+			return soupy_zip_starts_with(path_canonical_, prefix_);
+		}
+
+		/// @desc Enumerate staging without following directory links or leaving its canonical root.
+		function soupy_zip_collect_files_inner(directory_, root_canonical_, result_, counter_) {
+			var base_ = soupy_zip_ends_with(directory_, PATHSEP) ? directory_ : directory_ + PATHSEP;
+			var names_ = [], current_ = file_find_first(base_ + "*", fa_directory | fa_hidden | fa_sysfile | fa_readonly);
+			while ( current_ != "" ) {
+				if ( current_ != "." && current_ != ".." ) { array_push(names_, current_); }
+				current_ = file_find_next();
+			}
+			file_find_close();
+
+			for ( var i_ = 0; i_ < array_length(names_); i_++; ) {
+				counter_.count++;
+				if ( counter_.count > SOUPY_ZIP_MAX_ENTRIES * 2 + 4 ) { throw "The extracted archive contains too many filesystem entries."; }
+				var path_ = base_ + names_[i_];
+				if ( symlink_exists(path_) ) { throw "The extracted archive contains a symbolic link or junction."; }
+				if ( !soupy_zip_path_within(root_canonical_, path_) ) { throw "An extracted path escaped the staging directory."; }
+				if ( directory_exists(path_) ) { soupy_zip_collect_files_inner(path_, root_canonical_, result_, counter_); }
+				else if ( file_exists(path_) ) { array_push(result_, path_); }
+				else { throw "The extracted archive contains an unsupported filesystem entry."; }
+			}
+			return result_;
+		}
+
+		function soupy_zip_collect_files(directory_) {
+			var root_canonical_ = soupy_zip_canonical(directory_);
+			return soupy_zip_collect_files_inner(directory_, root_canonical_, [], { count: 0, });
+		}
+
+		function soupy_zip_stage_path(stage_) {
+			var raw_stage_ = string_replace_all(stage_, "\\", "/");
+			var raw_temp_ = string_replace_all(temp_directory, "\\", "/");
+			if ( os_type == os_windows ) { raw_stage_ = string_lower(raw_stage_); raw_temp_ = string_lower(raw_temp_); }
+			if ( !soupy_zip_ends_with(raw_temp_, "/") ) { raw_temp_ += "/"; }
+			if ( !soupy_zip_starts_with(raw_stage_, raw_temp_) ) { return false; }
+			var relative_ = string_delete(raw_stage_, 1, string_length(raw_temp_));
+			if ( soupy_zip_ends_with(relative_, "/") ) { relative_ = string_delete(relative_, string_length(relative_), 1); }
+			return soupy_zip_starts_with(relative_, "soupy_zip_") && string_pos("/", relative_) == 0;
+		}
+
+		function soupy_zip_delete_tree_inner(directory_, root_canonical_) {
+			var base_ = soupy_zip_ends_with(directory_, PATHSEP) ? directory_ : directory_ + PATHSEP;
+			var names_ = [], current_ = file_find_first(base_ + "*", fa_directory | fa_hidden | fa_sysfile | fa_readonly);
+			while ( current_ != "" ) {
+				if ( current_ != "." && current_ != ".." ) { array_push(names_, current_); }
+				current_ = file_find_next();
+			}
+			file_find_close();
+
+			for ( var i_ = 0; i_ < array_length(names_); i_++; ) {
+				var path_ = base_ + names_[i_];
+				if ( symlink_exists(path_) ) {
+					if ( directory_exists(path_) ) { directory_destroy(path_); }
+					else if ( file_exists(path_) ) { file_delete(path_); }
+				}
+				else if ( directory_exists(path_) ) {
+					if ( soupy_zip_path_within(root_canonical_, path_) ) { soupy_zip_delete_tree_inner(path_, root_canonical_); }
+				}
+				else if ( file_exists(path_) && soupy_zip_path_within(root_canonical_, path_) ) { file_delete(path_); }
+			}
+			directory_destroy(directory_);
+		}
+
+		function soupy_zip_cleanup(stage_) {
+			if ( !is_string(stage_) || !soupy_zip_stage_path(stage_) || !directory_exists(stage_) ) { return; }
+			try {
+				var root_canonical_ = soupy_zip_canonical(stage_);
+				var temp_canonical_ = soupy_zip_canonical(temp_directory);
+				if ( soupy_zip_path_within(temp_canonical_, stage_) ) { soupy_zip_delete_tree_inner(stage_, root_canonical_); }
+			}
+			catch ( cleanup_error_ ) { show_debug_message($"ZIP staging cleanup failed: {soupy_zip_error_string(cleanup_error_)}"); }
+		}
+
+		function soupy_zip_begin(zip_path_) {
+			if ( os_browser != browser_not_a_browser || is_wasm() ) {
+				soupy_zip_report_error("ZIP import is unavailable in browser builds.");
+				return false;
+			}
+			if ( !is_string(zip_path_) || string_lower(filename_ext(zip_path_)) != ".zip" ) {
+				soupy_zip_report_error("Select a file with the .zip extension.");
+				return false;
+			}
+			if ( !is_undefined(soup_checkout("bulkload", false, true)) ) {
+				soupy_zip_report_error("Another ZIP face import is already running.");
+				return false;
+			}
+
+			var token_ = $"{current_time}_{irandom(999999999)}";
+			var temp_root_ = temp_directory;
+			if ( !string_ends_with(temp_root_, "/") && !string_ends_with(temp_root_, "\\") ) { temp_root_ += PATHSEP; }
+			var stage_ = $"{temp_root_}soupy_zip_{token_}{PATHSEP}";
+			var extract_ = $"{stage_}extract{PATHSEP}";
+			var snapshot_ = $"{stage_}archive.zip";
+			if ( directory_exists(stage_) ) { soupy_zip_report_error("Could not allocate a unique staging folder."); return false; }
+			directory_create(stage_);
+			if ( !directory_exists(stage_) ) { soupy_zip_report_error("Could not create the staging folder."); return false; }
+
+			try {
+				var source_size_ = file_size(zip_path_);
+				if ( source_size_ <= 0 || source_size_ > SOUPY_ZIP_MAX_ARCHIVE_BYTES ) { throw "Archive size is invalid or exceeds 64 MiB."; }
+				file_copy(zip_path_, snapshot_);
+				if ( !file_exists(snapshot_) || file_size(snapshot_) != source_size_ ) { throw "Could not create a stable snapshot of the selected ZIP."; }
+
+				var preflight_ = soupy_zip_preflight(snapshot_);
+				if ( !preflight_.ok ) { throw preflight_.error; }
+				directory_create(extract_);
+				if ( !directory_exists(extract_) ) { throw "Could not create the extraction staging folder."; }
+
+				var request_ = zip_unzip_async(snapshot_, extract_);
+				if ( request_ < 0 ) { throw "GameMaker rejected the ZIP extraction request."; }
+				soup_store("bulkload", {
+					id: request_,
+					fpath: zip_path_,
+					stage: stage_,
+					extract: extract_,
+					archive: snapshot_,
+					token: token_,
+					plan: preflight_.files,
+				}, false, true);
+				return true;
+			}
+			catch ( error_ ) {
+				soupy_zip_cleanup(stage_);
+				soupy_zip_report_error(soupy_zip_error_string(error_));
+				return false;
+			}
+		}
+
+		function soupy_zip_character_key(character_) {
+			var names_ = struct_get_names(global.faces_dict), wanted_ = string_lower(character_);
+			for ( var i_ = 0; i_ < array_length(names_); i_++; ) {
+				if ( string_lower(names_[i_]) == wanted_ ) { return names_[i_]; }
+			}
+			return character_;
+		}
+
+		function soupy_zip_face_exists(character_key_, expression_) {
+			if ( !variable_struct_exists(global.faces_dict, character_key_) ) { return false; }
+			var faces_ = struct_get_names(global.faces_dict[$ character_key_]), wanted_ = string_lower(expression_);
+			for ( var i_ = 0; i_ < array_length(faces_); i_++; ) {
+				if ( faces_[i_] != "NEW SPRITE" && string_lower(faces_[i_]) == wanted_ ) { return true; }
+			}
+			return false;
+		}
+
+		function soupy_zip_struct_key_exists_ci(struct_, key_) {
+			var names_ = struct_get_names(struct_), wanted_ = string_lower(key_);
+			for ( var i_ = 0; i_ < array_length(names_); i_++; ) {
+				if ( string_lower(names_[i_]) == wanted_ ) { return true; }
+			}
+			return false;
+		}
+	#endregion
+
 	///@desc Returns an external sprite or adds it if it doesn't already exist
 	function external_ensure(name_, fname_, fpath_, type_ = 0, allowmultiple_ = true, showmsg_ = true) {
 		if ( filename_ext(fpath_) != ".png" && !is_android() ) { soupy_message($"\"{fname_}\"|is not allowed to be loaded.|File must be a PNG format.", , 320, , , snd_error, , , SYSTEMUI.ui_paused); return -1; }
@@ -545,11 +1032,10 @@ pref = {
 						var result = get_open_filename_ext("Image File (.PNG Only) or Zip|*.png;*.zip", "", directory_get_pictures_path(), "Select a sprite to import.");
 						if ( result == -1 || result == "" ) { exit; }
 						sfx_play(snd_equip);
-						var myname_, myext_ = filename_ext(result);
+						var myname_, myext_ = string_lower(filename_ext(result));
 						if ( myext_ == ".zip" ) {
-							var bulk = zip_unzip_async(result, filename_path(result));
-							soup_store("bulkload", { id: bulk, fpath: result, fext: myext_, fname: filename_name(result), finalpath: string_replace(result, ".zip", ""), }, , true);
-							sfx_play(snd_chest); result = -1; myname_ = "";
+							if ( soupy_zip_begin(result) ) { sfx_play(snd_chest); soup_checkout("datafunc", false)(); }
+							exit;
 						} else { myname_ = string_exclude(string_replace(string_replace(filename_name(result), "_strip", ""), ".png", ""), "0123456789"); result = external_ensure(myname_, filename_name(result), result, , SYSTEMUI.ui_tab == 0 ? true : false); }
 						if ( element_.getData("clear_") ) { FACE_CURRENT = result; FACE_ORIGINAL = FACE_CURRENT; } 
 						soup_checkout(element_.getData("inputsoup_"), false, element_.getData("inputglobal_")).set(myname_); 
