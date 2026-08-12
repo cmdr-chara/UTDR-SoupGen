@@ -24,24 +24,29 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 	
 	///@ignore
 	static _updateSlider = function() {
-		self.slider_size = min(self.width, self.height);
+		var _track_height = min(self.width, self.height);
+		var _inset = clamp(self.style.toggle_slider_inset ?? 0, 0, floor(_track_height / 3));
+		self.slider_size = max(1, _track_height - _inset * 2);
 		if self.value == false {
 			self.slider_color_value = 0;
-			self.slider_xoffset = 0;
+			self.slider_xoffset = _inset;
 		} else {
 			self.slider_color_value = 1;
-			var _draw_width = min(self.width, self.height) * 2;
-			self.slider_xoffset = _draw_width - self.slider_size;
+			var _draw_width = _track_height * 2;
+			self.slider_xoffset = _draw_width - self.slider_size - _inset;
 		}
 	}
 	
 	self.draw = function() {
-		self.slider_size = min(self.width, self.height);
-		var _draw_width = min(self.width, self.height) * 2;
 		var _draw_height = min(self.width, self.height);
+		var _draw_width = _draw_height * 2;
+		var _inset = clamp(self.style.toggle_slider_inset ?? 0, 0, floor(_draw_height / 3));
+		self.slider_size = max(1, _draw_height - _inset * 2);
 		// Base
 		if !is_undefined(self.style.sprite_toggleswitch) {
-			var _blend_color = merge_color(self.style.color_back, self.style.color_accent, self.slider_color_value);
+			var _track_color = self.style.color_toggle_track ?? self.style.color_back;
+			var _track_active_color = self.style.color_toggle_track_active ?? self.style.color_accent;
+			var _blend_color = merge_color(_track_color, _track_active_color, self.slider_color_value);
 			if self.deactivated {
 				_blend_color = merge_color(_blend_color, c_black, 0.5);
 			}
@@ -49,7 +54,7 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 		}
 		// Slider
 		if !is_undefined(self.style.sprite_toggleswitch_slider) {
-			var _blend_color = self.style.color_primary;
+			var _blend_color = self.style.color_toggle_thumb ?? self.style.color_primary;
 			if !self.deactivated {
 				if self.isMouseHovered() {
 					_blend_color = merge_color(_blend_color, self.style.color_hover, 0.5);
@@ -57,11 +62,11 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 			} else {
 				_blend_color = merge_color(_blend_color, c_black, 0.5);
 			}
-			draw_sprite_stretched_ext(self.style.sprite_toggleswitch_slider, 0, self.x + self.slider_xoffset, self.y, self.slider_size, self.slider_size, _blend_color, 1);
+			draw_sprite_stretched_ext(self.style.sprite_toggleswitch_slider, 0, self.x + self.slider_xoffset, self.y + _inset, self.slider_size, self.slider_size, _blend_color, 1);
 		}
 		// Slider border
 		if !is_undefined(self.style.sprite_toggleswitch_slider_border) {
-			draw_sprite_stretched_ext(self.style.sprite_toggleswitch_slider_border, 0, self.x + self.slider_xoffset, self.y, self.slider_size, self.slider_size, self.style.color_border, 1);
+			draw_sprite_stretched_ext(self.style.sprite_toggleswitch_slider_border, 0, self.x + self.slider_xoffset, self.y + _inset, self.slider_size, self.slider_size, self.style.color_border, 1);
 		}
 		// Border
 		if !is_undefined(self.style.sprite_toggleswitch_border) {
@@ -105,8 +110,10 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 	self.addEvent(LUI_EV_VALUE_UPDATE, function(_element) {
 		var _anim_time = 0.2;
 		// Slider animation
-		var _draw_width = min(_element.width, _element.height) * 2;
-		var _target_slider_xoffset = _element.value == false ? 0 : _draw_width - _element.slider_size;
+		var _track_height = min(_element.width, _element.height);
+		var _draw_width = _track_height * 2;
+		var _inset = clamp(_element.style.toggle_slider_inset ?? 0, 0, floor(_track_height / 3));
+		var _target_slider_xoffset = _element.value == false ? _inset : _draw_width - _element.slider_size - _inset;
 		_element.main_ui.animate(_element, "slider_xoffset", _target_slider_xoffset, _anim_time, self.ease);
 		// Slider back color animation
 		var _target_color_value = _element.value == true ? 1 : 0;

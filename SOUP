@@ -1,5 +1,5 @@
 {
-  "game_version":"1.6.9",
+  "game_version":"1.7.0",
   "game_page":"https://github.com/cmdr-chara/UTDR-SoupGen/releases",
-  "changelog":"- checksummed two-slot recovery and preferences|- bounded GIF export with verified finalization|- staged ZIP portrait import with validation and rollback|- GIF playback timing now matches the 60 FPS editor"
+  "changelog":"- calm interface enabled by default|- fixed dark editor palette with a single configurable accent|- stable top navigation with a dedicated Export action|- progressive formatting controls and grouped Settings|- reduced background, hover, particle, and status motion|- delayed tooltips and clearer action labels"
 }

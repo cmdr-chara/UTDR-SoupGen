@@ -21,6 +21,9 @@ function LuiMain() : LuiBase() constructor {
 	self._screen_grid = {};
 	self.prev_mouse_x = -1;
 	self.prev_mouse_y = -1;
+	self.tooltip_delay_ms = 0;
+	self.tooltip_hovered_element = undefined;
+	self.tooltip_hover_started_ms = current_time;
 	self.is_initialized = true;
 	
 	// Init Flex size
@@ -75,6 +78,15 @@ function LuiMain() : LuiBase() constructor {
 	///@arg {bool} _display
 	static displayFocusedElement = function(_display) {
 		self.display_focused_element = _display;
+	}
+
+	///@desc Set the delay before a tooltip is shown.
+	///@arg {real} _milliseconds
+	static setTooltipDelay = function(_milliseconds = 0) {
+		self.tooltip_delay_ms = max(0, _milliseconds);
+		self.tooltip_hovered_element = undefined;
+		self.tooltip_hover_started_ms = current_time;
+		return self;
 	}
 	
 	// CHECKERS
@@ -394,16 +406,21 @@ function LuiMain() : LuiBase() constructor {
 					var _elm_y = self.element_in_focus.y;
 					var _elm_w = self.element_in_focus.width;
 					var _elm_h = self.element_in_focus.height;
-					draw_rectangle_color(_elm_x - 1, _elm_y - 1, _elm_x + _elm_w, _elm_y + _elm_h, c_white, c_white, c_white, c_white, true);
+					draw_rectangle_color(_elm_x - 1, _elm_y - 1, _elm_x + _elm_w, _elm_y + _elm_h, self.style.color_accent, self.style.color_accent, self.style.color_accent, self.style.color_accent, true);
 				}
 			}
 		}
 		
 		// Get topmost element
 		var _element = self.topmost_hovered_element;
+		if ( _element != self.tooltip_hovered_element ) {
+			self.tooltip_hovered_element = _element;
+			self.tooltip_hover_started_ms = current_time;
+		}
+		var _tooltip_ready = !is_undefined(_element) && current_time - self.tooltip_hover_started_ms >= self.tooltip_delay_ms;
 		
 		// Draw tooltip text
-		if !is_undefined(_element) {
+		if _tooltip_ready {
 			if ( _element.tooltip != "" && self.visible ) {
 				var _padding = self.style.padding; //Screen border indentation
 				var _padding_text = self.style.padding; //Text border indentation inside tooltip box

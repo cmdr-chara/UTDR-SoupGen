@@ -14,7 +14,7 @@ var errorfunc = function (txt_, w_ = undefined) { soupy_message(txt_, , w_, , , 
 				var arr_ = [
 					new LuiText({ value: "Bulk import .zip of face sprites?", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
 					new LuiText({ value: "These sprites will also be added for auto-loading.", text_halign: fa_center, text_valign: fa_middle, font: fnt_abaddon, color: c_white, xoff: 0, y: 10 }),
-					new LuiButton({ text: "Let's get soupy!!", height: 35, font: fnt_abaddon, }).setData("filedata", { fpath, fext, fname, }).addEvent(LUI_EV_CLICK, function(e_) {
+					new LuiButton({ text: "Import ZIP", height: 35, font: fnt_determination, }).setData("filedata", { fpath, fext, fname, }).addEvent(LUI_EV_CLICK, function(e_) {
 						SYSTEMUI.ui_paused = false; SYSTEMUI.file_dragging = false;
 						
 						var data = e_.getData("filedata");
