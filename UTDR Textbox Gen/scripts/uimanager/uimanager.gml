@@ -16,7 +16,7 @@
 	#macro PREF_SOUP "soupy_preferences.soupy" //Primary preferences journal slot in GameMaker's save area
 	#macro PREF_SOUP_BAK "soupy_preferences.bak.soupy" //Fallback preferences journal slot
 	#macro SOUPY_STORE_MARKER "@@SOUPY_STORE_V1@@\n"
-	#macro GAME_VERSION "1.6.9" //Current game version
+	#macro GAME_VERSION "1.7.0" //Current game version
 #endregion
 ///@desc Help Scribble with how to align the text
 function scribble_alignment(halign_ = 0, valign_ = 0) {
@@ -39,17 +39,36 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 }
 
 #region Default functions for the menu buttons
-	function on_enter_() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_sel_switch); TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_yellow][wheel]{text_static}"; color_butt = c_yellow; } }
-	function on_enter_a() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_sel_switch); TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_lime][wheel]{text_static}"; color_butt = c_lime; } }
-	function on_leave_() { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = SYSTEMUI.ui_accentcolor; } window_set_cursor(cr_default); }
-	function on_click_() { if ( SYSTEMUI.ui_tab != id_ ) { sfx_play(snd_select); SYSTEMUI.ui_tab = id_; on_reset_(); } else { sfx_play(snd_bump, , , random_range(0.8, 1.2)); } }
-	function on_hover_() { window_set_cursor(cr_drag); }
+	function nav_idle_() {
+		yoff = 0; text = text_static;
+		if ( self[$ "is_action"] ?? false ) {
+			color_butt = SYSTEMUI.ui_accentcolor;
+			color_butt_hover = merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
+			color = SYSTEMUI.ui_bgcolor;
+		}
+		else { color_butt = SYSTEMUI.ui_surface_high; color_butt_hover = SYSTEMUI.ui_bordercolor; color = SYSTEMUI.ui_mutedcolor; }
+	}
+	function nav_active_() {
+		yoff = 0; text = text_static;
+		color_butt = SYSTEMUI.ui_accentcolor; color_butt_hover = SYSTEMUI.ui_accentcolor; color = SYSTEMUI.ui_bgcolor;
+	}
+	function on_enter_() {
+		if ( SYSTEMUI.ui_tab != id_ ) {
+			color_butt = SYSTEMUI.ui_bordercolor; color = SYSTEMUI.ui_textcolor;
+		}
+	}
+	function on_enter_a() {
+		color_butt = merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
+	}
+	function on_leave_() { if ( ( self[$ "is_action"] ?? false ) || SYSTEMUI.ui_tab != id_ ) { nav_idle_(); } else { nav_active_(); } window_set_cursor(cr_default); }
+	function on_click_() { if ( SYSTEMUI.ui_tab != id_ ) { if ( !global.pref.focusmode ) { sfx_play(snd_select); } SYSTEMUI.ui_tab = id_; on_reset_(); } else if ( !global.pref.focusmode ) { sfx_play(snd_bump, , , random_range(0.8, 1.2)); } }
+	function on_hover_() { window_set_cursor(global.pref.focusmode ? cr_handpoint : cr_drag); }
 	function on_reset_(update_ = true) { 
 		if ( !instance_exists(SYSTEMUI) ) { exit; }
 		SYSTEMUI.ui_reset(update_);
 		
 		var i = 0;
-		repeat ( array_length(SYSTEMUI.butt) ) { with ( SYSTEMUI.butt[i].data ) { if ( SYSTEMUI.ui_tab != id_ ) { TweenFire("~ocirc", "$15", "yoff>", 0); text = text_static; color_butt = SYSTEMUI.ui_accentcolor; } else { TweenFire("~ocirc", "$15", "yoff>", 5); text = $"[c_yellow][wheel]{text_static}"; color_butt = c_yellow; } } i++; }
+		repeat ( array_length(SYSTEMUI.butt) ) { with ( SYSTEMUI.butt[i].data ) { if ( ( self[$ "is_action"] ?? false ) || SYSTEMUI.ui_tab != id_ ) { nav_idle_(); } else { nav_active_(); } } i++; }
 	}
 #endregion
 
@@ -326,6 +345,7 @@ function soupy_url(path_, args_ = "", act_ = "", cmd_ = 5, webview_ = true) {
 ///@desc Manages state for UI tabs.
 function ui_manage() {
 	//live_auto_call 
+	if ( UI_MESSAGE && keyboard_check(vk_control) && keyboard_check_pressed(ord("M")) ) { ui_format_open = !ui_format_open; }
 	#region Update Text
 		var update_text = function() { //Update text function
 			undo_stack_begin_move(); 
@@ -400,7 +420,7 @@ function ui_manage() {
 		
 					var x_ = 10, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 40) && range_within(mouse_y_gui, y_ - 30, y_ + 30);
 					if ( within_ ) {
-						if ( !within_hover4 ) { within_hover4 = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hover4 ) { within_hover4 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw); dial_text_page = approach(dial_text_page, 0, 1); yscale_4 = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw, , , 1.3); dial_text_page = 0; } //Pressed Right
 					}
@@ -412,9 +432,9 @@ function ui_manage() {
 					soupyclipm_draw();
 						draw_sprite_stretched_ext(spr_pixel, 0, x_ - 22, y_ - 17, 39, 34, c_black, 1); //Outline
 						draw_sprite_stretched(spr_border_undertale, 0, x_ - 20, y_ - 15, 35, 30); //Border
-						draw_sprite_ensure(spr_effects_icons, 12, x_ - abs(sin(current_time/250) ) * 4, y_, -1, yscale_4, 180, within_ ? c_white : c_yellow); //Right Arrow
+						draw_sprite_ensure(spr_effects_icons, 12, x_ - ( global.pref.focusmode ? 0 : abs(sin(current_time/250) ) * 4 ), y_, -1, global.pref.focusmode ? 1 : yscale_4, 180, within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_yellow )); //Left arrow
 					shader_reset();
-					yscale_4 = lerp(yscale_4, 1, 0.15);
+					yscale_4 = global.pref.focusmode ? 1 : lerp(yscale_4, 1, 0.15);
 				}
 			#endregion
 			#region Right Page
@@ -424,7 +444,7 @@ function ui_manage() {
 		
 					var x_ = 630, y_ = 400, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 20) && range_within(mouse_y_gui, y_ - 30, y_ + 30);
 					if ( within_ ) {
-						if ( !within_hover5 ) { within_hover5 = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hover5 ) { within_hover5 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw); dial_text_page = approach(dial_text_page, dial_text_page_c, 1); yscale_5 = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { if ( !bord_visible ) { sfx_play(snd_enc1, 0, , 1.3); bord_visible = true; } sfx_play(snd_bump, , 0.7, 1.5); sfx_play(snd_throw, , , 1.3); dial_text_page = dial_text_page_c - 1; } //Pressed Right
 					}
@@ -436,15 +456,15 @@ function ui_manage() {
 					soupyclipm_draw();	
 						draw_sprite_stretched_ext(spr_pixel, 0, x_ - 15, y_ - 17, 39, 34, c_black, 1); //Outline
 						draw_sprite_stretched(spr_border_undertale, 0, x_ - 13, y_ - 15, 35, 30); //Border
-						draw_sprite_ensure(spr_effects_icons, 12, x_ + abs(sin(current_time/250) ) * 4, y_, , yscale_5, 180, within_ ? c_white : c_yellow); //Right Arrow
+						draw_sprite_ensure(spr_effects_icons, 12, x_ + ( global.pref.focusmode ? 0 : abs(sin(current_time/250) ) * 4 ), y_, , global.pref.focusmode ? 1 : yscale_5, 180, within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_yellow )); //Right arrow
 					shader_reset();
-					yscale_5= lerp(yscale_5, 1, 0.15);
+					yscale_5 = global.pref.focusmode ? 1 : lerp(yscale_5, 1, 0.15);
 				}
 			#endregion
 			#region Page Indicator Text
 				if ( dial_text_page_c > 1 && bord_visible ) {
-					var pageind = scribble($"< Page {dial_text_page + 1}/ {dial_text_page_c} > [offset,0,-2][spr_effects_icons,16][offsetpop]")
-											.starting_format("fnt_abaddon", c_gray)
+					var pageind = scribble(global.pref.focusmode ? $"Page {dial_text_page + 1} / {dial_text_page_c}" : $"< Page {dial_text_page + 1}/ {dial_text_page_c} > [offset,0,-2][spr_effects_icons,16][offsetpop]")
+										.starting_format("fnt_abaddon", global.pref.focusmode ? ui_mutedcolor : c_gray)
 											.align(fa_center, fa_middle)
 											.draw(320, 333)
 				}
@@ -454,9 +474,17 @@ function ui_manage() {
 			
 	#region Textbox and Quick Text
 		QuillDrawOverlays();
-		
-		draw_format("left", "center", fnt_abaddon);
-		draw_text_ext(20, 90, "Quick Colors:\n \nQuick Effects:", 12, -1);
+		if ( global.pref.focusmode ) {
+			format_button.data.text = ui_format_open ? "Format -" : "Format +";
+			format_button.data.color_butt = ui_format_open ? ui_accentcolor : ui_surface_high;
+			format_button.data.color_butt_hover = ui_format_open ? ui_accentcolor : ui_bordercolor;
+			format_button.data.color = ui_format_open ? ui_bgcolor : ui_textcolor;
+			format_button.update();
+		}
+		else {
+			draw_format("left", "center", fnt_abaddon);
+			draw_text_ext(20, 90, "Quick Colors:\n \nQuick Effects:", 12, -1);
+		}
 	#endregion
 			
 	#region Color and Effects Function
@@ -488,49 +516,52 @@ function ui_manage() {
 	#endregion
 
 	#region Color Buttons
-		if ( variable_instance_get(obj_system, "colors_get") == undefined ) { variable_instance_set(obj_system, "colors_get", __scribble_config_colours()); }
-		draw_sprite_ext(spr_pixel, 0, 158 - 2, 68 - 2, 429 + 4, 14 + 4, 0, c_white, 1); //Palette Outline White
-		draw_sprite_ext(spr_pixel, 0, 158, 68, 429, 14, 0, rgb(39, 31, 54), 1); //Palette Back
-		var colors_ = ["c_red", "c_yellow", "c_blue", "c_lime", "c_aqua", "c_cyan", "c_purple", "c_orange", "c_maroon", "c_pink", "c_gold", "c_white", "c_ltgray", "c_gray", "c_dkgray", "c_black"], colors_i = 0, colors_len = array_length(colors_); //Available colors
-		repeat ( colors_len ) {
-			var colors_cur = colors_[colors_i]; //Current color
-			var butt_data = { x: 160 + ( 27 * colors_i ), y: 70, sprite: spr_color_button, draw_nine: false, leeway: 3, color_butt: colors_get[$ colors_cur], color_butt_hover: merge_color(colors_get[$ colors_cur], color_get_value(colors_get[$ colors_cur]) > 150 ? c_black : c_white, 0.3), on_click: method({ colors_cur }, function () { SYSTEMUI.butt_func(colors_cur, true); }), on_click_right: method({ colors_cur }, function () { 
-				sfx_play(snd_equip2, , , 1.5); 
-				var clrget = SYSTEMUI.colors_get[$ colors_cur];
-				if ( SYSTEMUI.dial_text_outline != clrget ) { if ( !string_search(SYSTEMUI.dial_font, "_outline", true) ) { SYSTEMUI.dial_font = $"{SYSTEMUI.dial_font}_outline"; } SYSTEMUI.dial_text_outline = clrget; } //Switching to a new color? Change the text outline, otherwise disable text outline
-				else { SYSTEMUI.dial_font = string_replace(SYSTEMUI.dial_font, "_outline", ""); SYSTEMUI.dial_text_outline = -1; }
-			}) };
-					
-			butt_data[$ "x2"] = butt_data.x + sprite_get_width(butt_data.sprite); butt_data[$ "y2"] = butt_data.y + sprite_get_height(butt_data.sprite); 
-			var butt_ = new Button(butt_data); butt_.update(); //Create button
-		colors_i++; }
+		if ( !global.pref.focusmode || ui_format_open ) {
+			if ( variable_instance_get(obj_system, "colors_get") == undefined ) { variable_instance_set(obj_system, "colors_get", __scribble_config_colours()); }
+			draw_sprite_ext(spr_pixel, 0, 158 - 2, 68 - 2, 429 + 4, 14 + 4, 0, global.pref.focusmode ? ui_bordercolor : c_white, 1); //Palette outline
+			draw_sprite_ext(spr_pixel, 0, 158, 68, 429, 14, 0, global.pref.focusmode ? ui_surfacecolor : rgb(39, 31, 54), 1); //Palette back
+			var colors_ = ["c_red", "c_yellow", "c_blue", "c_lime", "c_aqua", "c_cyan", "c_purple", "c_orange", "c_maroon", "c_pink", "c_gold", "c_white", "c_ltgray", "c_gray", "c_dkgray", "c_black"], colors_i = 0, colors_len = array_length(colors_); //Available colors
+			repeat ( colors_len ) {
+				var colors_cur = colors_[colors_i]; //Current color
+				var butt_data = { x: 160 + ( 27 * colors_i ), y: 70, sprite: spr_color_button, draw_nine: false, leeway: 3, color_butt: colors_get[$ colors_cur], color_butt_hover: merge_color(colors_get[$ colors_cur], color_get_value(colors_get[$ colors_cur]) > 150 ? c_black : c_white, 0.3), on_click: method({ colors_cur }, function () { SYSTEMUI.butt_func(colors_cur, true); }), on_click_right: method({ colors_cur }, function () {
+					sfx_play(snd_equip2, , , 1.5);
+					var clrget = SYSTEMUI.colors_get[$ colors_cur];
+					if ( SYSTEMUI.dial_text_outline != clrget ) { if ( !string_search(SYSTEMUI.dial_font, "_outline", true) ) { SYSTEMUI.dial_font = $"{SYSTEMUI.dial_font}_outline"; } SYSTEMUI.dial_text_outline = clrget; } //Switching to a new color? Change the text outline, otherwise disable text outline
+					else { SYSTEMUI.dial_font = string_replace(SYSTEMUI.dial_font, "_outline", ""); SYSTEMUI.dial_text_outline = -1; }
+				}) };
+
+				butt_data[$ "x2"] = butt_data.x + sprite_get_width(butt_data.sprite); butt_data[$ "y2"] = butt_data.y + sprite_get_height(butt_data.sprite);
+				var butt_ = new Button(butt_data); butt_.update(); //Create button
+			colors_i++; }
+		}
 	#endregion
 			
 	#region Effects Buttons
-		var effects_ = ["Wave   ", "Wheel    ", "Shake ", "Wobble  ", "Pulse ", "Rainbow", "Slant ", "Scale    ", "Cycle  ", "Blink    ", "Alpha  ", "Speed    "], effects_i = 0, effects_len = array_length(effects_), effects_off = effects_len - 6; //Available effects
-		repeat ( effects_len ) {
-			if ( effects_i > 5 ) { continue; }
-			var effects_true = effects_i + ui_effoff;
-			var effects_cur = effects_[effects_true]; //Current effect
-			var butt_data = { x: 180 + ( 75 * effects_i ), y: 95, color_butt: ui_accentcolor, color_butt_hover: c_yellow, color: c_black, text: $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) } 
-			var butt_ = new Button(butt_data); butt_.update(); //Create button
-		effects_i++; }
+		if ( !global.pref.focusmode || ui_format_open ) {
+			var effects_ = ["Wave   ", "Wheel    ", "Shake ", "Wobble  ", "Pulse ", "Rainbow", "Slant ", "Scale    ", "Cycle  ", "Blink    ", "Alpha  ", "Speed    "], effects_i = 0, effects_len = array_length(effects_), effects_off = effects_len - 6; //Available effects
+			repeat ( effects_len ) {
+				if ( effects_i > 5 ) { continue; }
+				var effects_true = effects_i + ui_effoff;
+				var effects_cur = effects_[effects_true]; //Current effect
+				var butt_data = { x: 180 + ( 75 * effects_i ), y: 95, color_butt: global.pref.focusmode ? ui_surface_high : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_bordercolor : c_yellow, color: global.pref.focusmode ? ui_textcolor : c_black, text: global.pref.focusmode ? string_trim(effects_cur) : $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: global.pref.focusmode ? 3 : 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) }
+				var butt_ = new Button(butt_data); butt_.update(); //Create button
+			effects_i++; }
 				
-		if ( UI_MESSAGE ) {
+			if ( UI_MESSAGE ) {
 			#region Right Button
 				if ( variable_instance_get(obj_system, "within_hover") == undefined ) { variable_instance_set(obj_system, "within_hover", false); }
 				if ( variable_instance_get(obj_system, "yscale_") == undefined ) { variable_instance_set(obj_system, "yscale_", 1); }
 				if ( ui_effoff < effects_off ) {
 					var x_ = 605, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 10, 640) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
-						if ( !within_hover ) { within_hover = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hover ) { within_hover = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 1.3); ui_effoff = approach(ui_effoff, effects_off, 1); yscale_ = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { sfx_play(snd_throw, 0, , 1.3); sfx_play(snd_bump, , 0.7, 1.5); ui_effoff = effects_off; } //Pressed Right
 					}
 					else { within_hover = false; }
-					draw_sprite_ensure(spr_effects_icons, 12, x_ + ( abs(sin(current_time/300) * 5) ) , y_, -1, yscale_, , within_ ? c_white : c_yellow); //Right Arrow
+					draw_sprite_ensure(spr_effects_icons, 12, x_ + ( global.pref.focusmode ? 0 : abs(sin(current_time/300) * 5) ), y_, -1, global.pref.focusmode ? 1 : yscale_, , within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_yellow )); //Right arrow
 				}
-				yscale_ = lerp(yscale_, 1, 0.15);
+				yscale_ = global.pref.focusmode ? 1 : lerp(yscale_, 1, 0.15);
 			#endregion
 			#region Left Button
 				if ( variable_instance_get(obj_system, "within_hover2") == undefined ) { variable_instance_set(obj_system, "within_hover2", false); }
@@ -538,15 +569,16 @@ function ui_manage() {
 				if ( ui_effoff > 0 ) {
 					var x_ = 130, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 10) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
-						if ( !within_hover2 ) {within_hover2 = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hover2 ) { within_hover2 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 0.7); ui_effoff = approach(ui_effoff, 0, 1); yscale_2 = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { sfx_play(snd_throw, 0, , 1.3); sfx_play(snd_bump, , 0.7, 1.5); ui_effoff = 0; } //Pressed Right
 					}
 					else { within_hover2 = false; }
-					draw_sprite_ensure(spr_effects_icons, 12, x_ - ( abs(sin(current_time/300) * 5) ), y_, , yscale_2, , within_ ? c_white : c_yellow); //Left Arrow
+					draw_sprite_ensure(spr_effects_icons, 12, x_ - ( global.pref.focusmode ? 0 : abs(sin(current_time/300) * 5) ), y_, , global.pref.focusmode ? 1 : yscale_2, , within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_yellow )); //Left arrow
 				}
-				yscale_2 = lerp(yscale_2, 1, 0.15);
+				yscale_2 = global.pref.focusmode ? 1 : lerp(yscale_2, 1, 0.15);
 			#endregion
+			}
 		}
 	#endregion
 
@@ -554,15 +586,19 @@ function ui_manage() {
 		if ( dial_updatet > 1 && !textinput.ContextMenuIsOpened() ) { //Notification for updating text
 			dial_updatet--;
 			var ringcalc = map_value(dial_updatet, 0, dial_updatet_max, 0, 360), textx = 300, texty = 395; //Turn the values of a timer into a range of degrees
-					
-			var ninesl_ = sprite_get_nineslice(spr_bord), off_ = spr_bord == spr_border_deltarune ? 15 : 5, mybord = global.pref.anyborder ? spr_border_undertale_safe : spr_bord;
-			if ( ninesl_.enabled && !global.pref.anyborder ) { draw_sprite_stretched_ext(mybord, bord_index, ( textx - 110 ) - off_, ( texty - 20 ) - off_, 250 + ( off_ * 2 ), 40 + ( off_ * 2 ), bord_clr, 1); } else { draw_9slice(mybord, bord_index, textx - 110, texty - 20, 250, 40, bord_clr, bord_scale, bord_stretch); } //Dialogue Box
-			var updatering = CleanRing(textx + 115, texty, 5, 10, 360, ringcalc) //Update text ring
-												.Blend(c_yellow, 1)
-												.Draw();
-													
-			draw_format(fa_center, fa_middle, fnt_speech, c_yellow);
-			draw_text(textx, texty, "Live-updating text...!");
+			if ( global.pref.focusmode ) {
+				draw_sprite_stretched_ext(spr_pixel, 0, textx - 110, texty - 16, 220, 32, ui_surface_high, 0.95);
+				draw_sprite_stretched_ext(spr_pixel, 0, textx - 110, texty - 16, 3, 32, ui_accentcolor, 1);
+				draw_format(fa_center, fa_middle, fnt_speech, ui_mutedcolor);
+				draw_text(textx, texty, "Updating preview...");
+			}
+			else {
+				var ninesl_ = sprite_get_nineslice(spr_bord), off_ = spr_bord == spr_border_deltarune ? 15 : 5, mybord = global.pref.anyborder ? spr_border_undertale_safe : spr_bord;
+				if ( ninesl_.enabled && !global.pref.anyborder ) { draw_sprite_stretched_ext(mybord, bord_index, ( textx - 110 ) - off_, ( texty - 20 ) - off_, 250 + ( off_ * 2 ), 40 + ( off_ * 2 ), bord_clr, 1); } else { draw_9slice(mybord, bord_index, textx - 110, texty - 20, 250, 40, bord_clr, bord_scale, bord_stretch); } //Dialogue Box
+				var updatering = CleanRing(textx + 115, texty, 5, 10, 360, ringcalc).Blend(c_yellow, 1).Draw();
+				draw_format(fa_center, fa_middle, fnt_speech, c_yellow);
+				draw_text(textx, texty, "Live-updating text...!");
+			}
 					
 			if ( mouse_pressed && ( range_within(mouse_x_gui, ( textx - 110 ) - 20, ( ( textx - 110 ) + 250 ) + 20) && range_within(mouse_y_gui, ( texty - 20 ) - 20, ( (texty - 20 ) + 40 ) + 20) ) ) { dial_updatet = 1; } //Early regeneration
 		}
@@ -571,7 +607,8 @@ function ui_manage() {
 			
 	#region Change Cursor
 		if ( UI_MESSAGE ) {
-			if ( range_within(mouse_x_gui, 120, 620) && range_within(mouse_y_gui, 60, 120) ) { window_set_cursor(cr_drag); } //At the command palette
+			if ( global.pref.focusmode && range_within(mouse_x_gui, 2, 86) && range_within(mouse_y_gui, 78, 114) ) { window_set_cursor(cr_handpoint); }
+			else if ( ( !global.pref.focusmode || ui_format_open ) && range_within(mouse_x_gui, 120, 620) && range_within(mouse_y_gui, 60, 120) ) { window_set_cursor(global.pref.focusmode ? cr_handpoint : cr_drag); } //At the command palette
 			else if ( range_within(mouse_x_gui, 20, 620) && range_within(mouse_y_gui, 110, 300) ) { window_set_cursor(cr_beam); } //At the textbox
 			else { if ( mouse_y_gui >= 60 ) { window_set_cursor(cr_default); } }
 		}
@@ -605,13 +642,13 @@ function ui_manage() {
 					
 					var x_ = 110 + dial_face_xoff_static, y_ = 325 + dial_face_yoff_static, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
 					if ( within_ ) {
-						if ( !within_hoverindex ) { within_hoverindex = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hoverindex ) { within_hoverindex = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) {  sfx_play(snd_bump, 0, , 1.3); FACE_INDEX = approach(FACE_INDEX, 0, 1); yscale_index = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { io_clear(); sfx_play(snd_throw, 0, , 1.3); FACE_INDEX = 0; yscale_index = 0.5; } //Pressed Right
 					}
 					else { within_hoverindex = false; }
-					draw_sprite_ensure(spr_effects_icons, 12, x_, y_ + ( abs(sin(current_time/ 200)) * 5 ), , yscale_index, 270, within_ ? c_yellow : c_cyan); // Arrow
-					yscale_index = lerp(yscale_index, 1, 0.15);
+					draw_sprite_ensure(spr_effects_icons, 12, x_, y_ + ( global.pref.focusmode ? 0 : abs(sin(current_time/ 200)) * 5 ), , global.pref.focusmode ? 1 : yscale_index, 270, within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_cyan )); //Arrow
+					yscale_index = global.pref.focusmode ? 1 : lerp(yscale_index, 1, 0.15);
 				}
 				else { variable_instance_set(obj_system, "within_hoverindex", false); }
 			#endregion
@@ -622,13 +659,13 @@ function ui_manage() {
 					
 					var x_ = 110 + dial_face_xoff_static, y_ = 457 + dial_face_yoff_static, within_ = range_within(mouse_x_gui, x_ - 20, x_ + 20) && range_within(mouse_y_gui, y_ - 20, y_ + 10);
 					if ( within_ ) {
-						if ( !within_hoverindex2 ) { within_hoverindex2 = true; sfx_play(snd_sel_switch); } //Hover
+						if ( !within_hoverindex2 ) { within_hoverindex2 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) {  sfx_play(snd_bump, 0, , 1.3); FACE_INDEX = approach(FACE_INDEX, sprite_get_number(FACE_CURRENT) - 1, 1); yscale_index2 = 0.5; } //Pressed
 						if ( mouse_pressed_right ) { io_clear(); sfx_play(snd_throw, 0, , 1.3); FACE_INDEX = sprite_get_number(FACE_CURRENT) - 1; yscale_index2 = 0.5; } //Pressed Right
 					}
 					else { within_hoverindex2 = false; }
-					draw_sprite_ensure(spr_effects_icons, 12, x_, y_ - ( abs(sin(current_time/ 200)) * 5 ), , yscale_index2, 90, within_ ? c_yellow : c_cyan); // Arrow
-					yscale_index2 = lerp(yscale_index2, 1, 0.15);
+					draw_sprite_ensure(spr_effects_icons, 12, x_, y_ - ( global.pref.focusmode ? 0 : abs(sin(current_time/ 200)) * 5 ), , global.pref.focusmode ? 1 : yscale_index2, 90, within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_cyan )); //Arrow
+					yscale_index2 = global.pref.focusmode ? 1 : lerp(yscale_index2, 1, 0.15);
 				}
 				else { variable_instance_set(obj_system, "within_hoverindex2", false); }
 			#endregion
@@ -649,12 +686,12 @@ function ui_manage() {
 		
 			var x_ = 320, y_ = 473, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 40) && range_within(mouse_y_gui, y_ - 40, y_ + 50);
 			if ( within_ ) {
-				if ( !within_hover3 ) { within_hover3 = true; sfx_play(snd_sel_switch); } //Hover
+				if ( !within_hover3 ) { within_hover3 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 				if ( mouse_pressed ) {  sfx_play(snd_enc1, 0, , bord_visible ? 0.7 : 1.3); bord_visible = !bord_visible; yscale_3 = 0.5; } //Pressed
 			}
 			else { within_hover3 = false; }
-			draw_sprite_ensure(spr_effects_icons, 12, x_, y_, , yscale_3, bord_visible ? 90 : 270, within_ ? c_white : c_yellow); //Left Arrow
-			yscale_3 = lerp(yscale_3, 1, 0.15);
+			draw_sprite_ensure(spr_effects_icons, 12, x_, y_, , global.pref.focusmode ? 1 : yscale_3, bord_visible ? 90 : 270, within_ ? ui_textcolor : ( global.pref.focusmode ? ui_mutedcolor : c_yellow )); //Visibility arrow
+			yscale_3 = global.pref.focusmode ? 1 : lerp(yscale_3, 1, 0.15);
 		}
 	#endregion
 			
@@ -664,14 +701,14 @@ function ui_manage() {
 			if ( variable_instance_get(obj_system, "within_mini") == undefined ) { variable_instance_set(obj_system, "within_mini", false); }
 			if ( variable_instance_get(obj_system, "within_mini_off") == undefined ) { variable_instance_set(obj_system, "within_mini_off", false); }
 			if ( within_ ) {
-				if ( !within_mini ) { within_mini = true; sfx_play(snd_sel_switch); } //Hover
+				if ( !within_mini ) { within_mini = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 				if ( mouse_pressed ) { //Pressed
 					sfx_play(snd_select);
 					external_choose_mini();
 				}
 			}
 			else { within_mini = false; }
-			within_mini_off = lerp(within_mini_off, within_ ? 15 : 0, 0.30);
+			within_mini_off = global.pref.focusmode ? 0 : lerp(within_mini_off, within_ ? 15 : 0, 0.30);
 
 			#region Sprites
 				soupyclipm_begin_clip();
@@ -679,8 +716,8 @@ function ui_manage() {
 				soupyclipm_end_clip();
 
 				soupyclipm_draw();
-					draw_sprite_stretched_ext(spr_border_undertale_outlined, 0, ( xx_ - 17 ) - within_mini_off, ( yy_ - 17 ) - within_mini_off, 50, 50, within_ ? c_yellow : c_white, 1);
-					draw_sprite_ensure(spr_gui_icons, 7, ( xx_ - within_mini_off ) + ( within_ ? 8 : 0 ), ( yy_ - within_mini_off ) + ( within_ ? 8 : 0 ), within_ ? 2 : 1, within_ ? 2 : 1, , within_ ? c_yellow : c_white);
+					draw_sprite_stretched_ext(global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined, 0, ( xx_ - 17 ) - within_mini_off, ( yy_ - 17 ) - within_mini_off, 50, 50, within_ ? ( global.pref.focusmode ? ui_bordercolor : c_yellow ) : ( global.pref.focusmode ? ui_surface_high : c_white ), 1);
+					draw_sprite_ensure(spr_gui_icons, 7, ( xx_ - within_mini_off ) + ( within_ && !global.pref.focusmode ? 8 : 0 ), ( yy_ - within_mini_off ) + ( within_ && !global.pref.focusmode ? 8 : 0 ), within_ && !global.pref.focusmode ? 2 : 1, within_ && !global.pref.focusmode ? 2 : 1, , global.pref.focusmode ? ui_textcolor : ( within_ ? c_yellow : c_white ));
 				shader_reset();
 			#endregion
 		}

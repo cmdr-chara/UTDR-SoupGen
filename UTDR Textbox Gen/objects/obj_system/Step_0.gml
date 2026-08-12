@@ -2,7 +2,8 @@
 //if ( live_call() ) { return live_result; } 
 outlinesoup_step(640, 480);
 if ( ui_visible ) { 
-	ui_tab_yoff = lerp(ui_tab_yoff, !bord_visible ? ( ui_tab == 0 ? 55 : 65 ) : 0, 0.15); //Smoothly adjust orange and white borders
+	var tab_yoff_target_ = !bord_visible ? ( ui_tab == 0 ? 55 : 65 ) : 0;
+	ui_tab_yoff = global.pref.focusmode ? tab_yoff_target_ : lerp(ui_tab_yoff, tab_yoff_target_, 0.15); //Focus mode avoids decorative layout motion
 	if ( soupy_panel_portrait.height != 340 + ui_tab_yoff ) { soupy_panel_portrait.setHeight(340 + ui_tab_yoff); }
 	if ( soupy_panel_border.height != 340 + ui_tab_yoff ) { soupy_panel_border.setHeight(340 + ui_tab_yoff); }
 	if ( soupy_panel_style.height != 340 + ui_tab_yoff ) { soupy_panel_style.setHeight(340 + ui_tab_yoff); }
@@ -52,7 +53,7 @@ if ( dial_text_outline != -1 && !string_search(dial_font, "outline", true) ) { d
 
 #region Fullscreen, Effects
 	if ( keyboard_check_pressed(vk_f2) && !is_android() ) { game_restart_alt(); }
-	if ( mouse_pressed || mouse_pressed_right ) {
+	if ( !global.pref.focusmode && ( mouse_pressed || mouse_pressed_right ) ) {
 		var clr_ = make_color_hsv(irandom(255), 255, 255);
 		instance_create_depth(mouse_x_gui, mouse_y_gui, -1, obj_particle, { sprite_index: spr_spark, image_speed: 0.50, follow: true, offx: -15, image_blend: clr_, });
 		instance_create_depth(mouse_x_gui, mouse_y_gui, -1, obj_particle, { sprite_index: spr_spark, image_speed: 0.50, image_xscale: -1, follow: true, offx: 25, image_blend: clr_, });

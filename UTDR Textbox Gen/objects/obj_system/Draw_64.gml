@@ -15,22 +15,31 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 }
 #region UI Borders and Buttons
 	if ( ui_visible ) {
-		#region No 3D BG
-			if ( !global.pref.bg3d ) {
-				draw_sprite_tiled_ext(spr_testbg_1, 0, -current_time/50, -current_time/50, 1, 1, merge_color(ui_accentcolor, c_black, 0.9), 1);
-				draw_sprite_tiled_ext(spr_testbg_1, 0, current_time/50, current_time/50, 1, 1, merge_color(ui_accentcolor, c_black, 0.6), 1);
-			}
-		#endregion
-		
-		#region Orange and White Border
-			outlinesoup_start();
-				var yoff = ui_tab_yoff;
-				draw_sprite_stretched_ext(spr_border_octagon, 0, 10, 20, room_width - 20, ( room_height - 90 ) + yoff, c_white, 0.6); //Back opacity
-				draw_sprite_stretched_ext(spr_border_tabs, 2, 10, 280, room_width - 20, ( room_height - 350 ) + yoff, merge_color(ui_accentcolor, c_white, 0.5), 1); //Fading Part
-				draw_sprite_stretched_ext(spr_border_tabs, 2, 10, 300, room_width - 20, ( room_height - 370 ) + yoff, c_white, 1); //Bottom
-				draw_sprite_stretched_ext(spr_border_tabs, 1, 10, 20, room_width - 20, ( room_height - 220 ), ui_accentcolor, 1); //Top
-			outlinesoup_end();
-		#endregion
+		if ( global.pref.focusmode ) {
+			var content_height_ = ( ui_tab == 0 && bord_visible ) ? 254 : 422;
+			draw_sprite_stretched_ext(spr_pixel, 0, 0, 0, 640, 480, ui_bgcolor, 1);
+			draw_sprite_stretched_ext(spr_pixel, 0, 0, 0, 640, 44, ui_surfacecolor, 1);
+			draw_sprite_stretched_ext(spr_pixel, 0, 0, 43, 640, 1, ui_bordercolor, 1);
+			draw_sprite_stretched_ext(spr_pixel, 0, 10, 48, 620, content_height_, ui_surfacecolor, 1);
+			draw_sprite_stretched_ext(spr_pixel, 0, 10, 48, 620, 1, ui_bordercolor, 1);
+		}
+		else {
+			#region No 3D BG
+				if ( !global.pref.bg3d ) {
+					draw_sprite_tiled_ext(spr_testbg_1, 0, 0, 0, 1, 1, merge_color(ui_accentcolor, c_black, 0.85), 1);
+				}
+			#endregion
+
+			#region Orange and White Border
+				outlinesoup_start();
+					var yoff = ui_tab_yoff;
+					draw_sprite_stretched_ext(spr_border_octagon, 0, 10, 20, room_width - 20, ( room_height - 90 ) + yoff, c_white, 0.6); //Back opacity
+					draw_sprite_stretched_ext(spr_border_tabs, 2, 10, 280, room_width - 20, ( room_height - 350 ) + yoff, merge_color(ui_accentcolor, c_white, 0.5), 1); //Fading Part
+					draw_sprite_stretched_ext(spr_border_tabs, 2, 10, 300, room_width - 20, ( room_height - 370 ) + yoff, c_white, 1); //Bottom
+					draw_sprite_stretched_ext(spr_border_tabs, 1, 10, 20, room_width - 20, ( room_height - 220 ), ui_accentcolor, 1); //Top
+				outlinesoup_end();
+			#endregion
+		}
 		
 		#region Menu Buttons
 			if ( sprite_exists(global.refimg) ) { draw_sprite_ensure(global.refimg, , 0, 0, , , , ui_refclr); } //Reference image
@@ -48,9 +57,15 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 		
 		if ( ui_tab == 0 ) { 
 			var x_ = 30, y_ = 130, w_ = 580, h_ = !bord_visible ? 310 : 160;
-			draw_sprite_ensure(spr_pixel, 0, x_ - 10, y_ - 14, w_ + 20, h_ + 24, 0, c_black, 1); //Textbox Outline Outer
-			draw_sprite_ensure(spr_pixel, 0, x_ - 8, y_ - 12, w_ + 16, h_ + 20, 0, c_white, 1); //Textbox Outline Inner
-			draw_sprite_ensure(spr_pixel, 0, x_ - 2, y_ - 6, w_ + 4, h_ + 8, 0, c_black, 1); //Textbox Inner Shadow and Outline
+			if ( global.pref.focusmode ) {
+				draw_sprite_ensure(spr_pixel, 0, x_ - 6, y_ - 10, w_ + 12, h_ + 16, 0, ui_surface_high, 1);
+				draw_sprite_ensure(spr_pixel, 0, x_ - 6, y_ - 10, w_ + 12, 2, 0, ui_accentcolor, 1);
+			}
+			else {
+				draw_sprite_ensure(spr_pixel, 0, x_ - 10, y_ - 14, w_ + 20, h_ + 24, 0, c_black, 1); //Textbox Outline Outer
+				draw_sprite_ensure(spr_pixel, 0, x_ - 8, y_ - 12, w_ + 16, h_ + 20, 0, c_white, 1); //Textbox Outline Inner
+				draw_sprite_ensure(spr_pixel, 0, x_ - 2, y_ - 6, w_ + 4, h_ + 8, 0, c_black, 1); //Textbox Inner Shadow and Outline
+			}
 
 			textinput.SetReadOnly(!UI_MESSAGE);
 			if ( textinput.GetReadOnly() ) { textinput.SetEnabled(false); } else { textinput.SetEnabled(true); }
@@ -241,9 +256,9 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 						}
 					#endregion
 				}
-				else { //Draw placeholders
+				else if ( ui_visible ) { //Editor-only placeholders
 					if ( FACE_CURRENT == -1 ) {
-						var emptytxt = scribble("[c_dkgray][wheel][scale,3](But nobody came.)")
+						var emptytxt = scribble(global.pref.focusmode ? "[c_dkgray][scale,2]No portrait selected" : "[c_dkgray][wheel][scale,3](But nobody came.)")
 						.align(fa_left, fa_top)
 						.draw(bordx + 200, bordy + 50);
 					
@@ -357,21 +372,24 @@ if ( ui_tab == 0 && ui_visible ) { ui_manage(); } //Menu handler
 	if ( ui_visible && file_dragging && UI_MESSAGE ) { //Receive signal for file dragging
 		//Portrait
 		if ( bord_visible ) {
-			draw_sprite_stretched_ext(spr_border_dashed, 0, 40 + dial_face_xoff_static, 323 + dial_face_yoff_static, 134, 136, c_yellow, 0.5 + abs(sin(current_time/300)) * 0.5);
-			draw_format("center", "center", fnt_speech, c_yellow);
-			draw_text(108, 390, "Drag your\nsprite here\nto change\nthe dialogue\nportrait!\n(.PNG ONLY)");
+			var drop_alpha_ = global.pref.focusmode ? 0.85 : 0.5 + abs(sin(current_time/300)) * 0.5;
+			var drop_color_ = global.pref.focusmode ? ui_accentcolor : c_yellow;
+			draw_sprite_stretched_ext(spr_border_dashed, 0, 40 + dial_face_xoff_static, 323 + dial_face_yoff_static, 134, 136, drop_color_, drop_alpha_);
+			draw_format("center", "center", fnt_speech, drop_color_);
+			draw_text(108, 390, global.pref.focusmode ? "Drop portrait\nPNG" : "Drag your\nsprite here\nto change\nthe dialogue\nportrait!\n(.PNG ONLY)");
 		
 			//Border
-			draw_sprite_stretched_ext(spr_border_dashed, 0, 190, 315, 420, 153, c_red, 0.5 + abs(sin(current_time/300)) * 0.5);
-			draw_format("center", "center", fnt_speech, c_red);
-			draw_text(400, 390, "Drag your sprite here to change\nthe dialogue border!\n(.PNG ONLY)");
+			draw_sprite_stretched_ext(spr_border_dashed, 0, 190, 315, 420, 153, global.pref.focusmode ? ui_accentcolor : c_red, drop_alpha_);
+			draw_format("center", "center", fnt_speech, global.pref.focusmode ? ui_accentcolor : c_red);
+			draw_text(400, 390, global.pref.focusmode ? "Drop border PNG" : "Drag your sprite here to change\nthe dialogue border!\n(.PNG ONLY)");
 		}
 	
 		//Textbox
 		if ( ui_tab == 0 ) {
-			draw_sprite_stretched_ext(spr_border_dashed, 0, 35, 135, 605 - 35, bord_visible ? 150 : 300, c_cyan, 0.5 + abs(sin(current_time/300)) * 0.5);
-			draw_format("center", "center", fnt_speech, c_cyan);
-			draw_text(320, bord_visible ? 210 : 290,  "Drag your text document here to copy over its contents!\n(.TXT ONLY)");
+			var text_drop_alpha_ = global.pref.focusmode ? 0.85 : 0.5 + abs(sin(current_time/300)) * 0.5;
+			draw_sprite_stretched_ext(spr_border_dashed, 0, 35, 135, 605 - 35, bord_visible ? 150 : 300, global.pref.focusmode ? ui_accentcolor : c_cyan, text_drop_alpha_);
+			draw_format("center", "center", fnt_speech, global.pref.focusmode ? ui_accentcolor : c_cyan);
+			draw_text(320, bord_visible ? 210 : 290, global.pref.focusmode ? "Drop dialogue TXT" : "Drag your text document here to copy over its contents!\n(.TXT ONLY)");
 		}
 	}
 #endregion
@@ -383,23 +401,23 @@ draw_sprite_ext(spr_pixel, 0, 0, 0, 640, 480, 0, c_black, fader); //Black fade o
 	if ( !ui_visible ) { 
 		if ( !ui_viewing ) {
 			if ( !ui_finished ) { //Generating Text
-				var gen_ = scribble(ui_preview ? "[wheel][c_gray]Previewing": "[rainbow][wave]Generating...!").scale(4).align(fa_center, fa_middle).draw(320, 210); 
-				draw_format("center", "center", fnt_determination, c_yellow);
+				var gen_ = scribble(global.pref.focusmode ? ( ui_preview ? "Previewing" : "Generating" ) : ( ui_preview ? "[wheel][c_gray]Previewing": "[rainbow][wave]Generating...!" )).starting_format("fnt_determination", global.pref.focusmode ? ui_textcolor : c_white).scale(global.pref.focusmode ? 3 : 4).align(fa_center, fa_middle).draw(320, 210);
+				draw_format("center", "center", fnt_determination, global.pref.focusmode ? ui_mutedcolor : c_yellow);
 				if ( record.enabled && record.type == 0 ) {
 					draw_text(320, 260, $"(Page: {dial_text_page} | Timer: {record.frames}/ {record.framesmax})"); //Show current page and timer
 				}
 				else { draw_text_transformed(320, 260, $"(Page: {dial_text_page + 1}/ {dial_text_page_c})", 2, 2, 0); } //Show current page and total page count
 		
-				draw_format("right", , fnt_determination); draw_text(635, 5, $"(Right-Click or Double-press ESC to cancel)"); //Cancel text
+				draw_format("right", , fnt_determination); draw_text(635, 5, global.pref.focusmode ? "Right-click or press Esc twice to cancel" : $"(Right-Click or Double-press ESC to cancel)"); //Cancel text
 			}
 			else { //Preview Export Options
 				if ( ui_finished_y == -100 ) { exit; }
-				var finish_ = scribble("[region,export]Soupy Export!![/region]\n[region,preview]Preview Again[/region]\n[region,cancel]Cancel Export.[/region]")
+				var finish_ = scribble("[region,export]Export[/region]\n[region,preview]Preview again[/region]\n[region,cancel]Cancel[/region]")
 				.scale(2).align(fa_center, fa_middle).line_height(50).allow_glyph_data_getter().padding(20, 10, 20, 10);
 				
 				var detect_ = finish_.region_detect(320, ui_finished_y, mouse_x_gui, mouse_y_gui);
-				if ( detect_ != undefined && is_undefined(soup_checkout("hover", false)) ) { soup_store("hover"); sfx_play(snd_sel_switch); finish_.region_set_active(detect_, c_yellow, 1); }
-				else if ( detect_ == undefined ) { finish_.region_set_active(undefined, c_yellow, 0); soup_checkout("hover"); }
+				if ( detect_ != undefined && is_undefined(soup_checkout("hover", false)) ) { soup_store("hover"); if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } finish_.region_set_active(detect_, global.pref.focusmode ? ui_accentcolor : c_yellow, 1); }
+				else if ( detect_ == undefined ) { finish_.region_set_active(undefined, global.pref.focusmode ? ui_accentcolor : c_yellow, 0); soup_checkout("hover"); }
 				
 				if ( mouse_pressed ) {
 					var sfx_ = false;

@@ -97,7 +97,12 @@ $windowsWorkflow = Get-Content -LiteralPath $windowsWorkflowPath -Raw
 $prefabRestore = Get-Content -LiteralPath $prefabRestorePath -Raw
 $uimanager = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/uimanager/uimanager.gml') -Raw
 $uiinit = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/uiinit/uiinit.gml') -Raw
+$uiDefaults = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/uiexternals/uiexternals.gml') -Raw
+$luiMain = Get-Content -LiteralPath (Join-Path $projectRoot 'scripts/LuiMain/LuiMain.gml') -Raw
 $systemCreate = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Create_0.gml') -Raw
+$systemDraw = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Draw_64.gml') -Raw
+$systemStep = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Step_0.gml') -Raw
+$backgroundStep = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Step_2.gml') -Raw
 $gifDraw = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Draw_75.gml') -Raw
 $miniDraw = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_mini/Draw_64.gml') -Raw
 $recovery = Get-Content -LiteralPath (Join-Path $projectRoot 'objects/obj_system/Other_4.gml') -Raw
@@ -160,6 +165,19 @@ Assert-Condition ($uimanager -match 'soupy_store_write\(backup_, primary_, kind_
 Assert-Condition ($uimanager -match 'is_wasm\(\) \|\| os_browser != browser_not_a_browser' -and $uimanager -match 'return executable_get_directory\(\) \+ filename_') 'Legacy storage migration is not guarded for browser targets'
 Assert-Condition ($systemCreate -match 'soupy_store_payload\(PREF_SOUP, PREF_SOUP_BAK, "preferences"' -and $systemCreate -match 'soupy_store_write\(PREF_SOUP, PREF_SOUP_BAK, "preferences"') 'Preferences do not use the verified two-slot journal'
 Assert-Condition ($uiinit -notmatch 'dial_face_alpha_orig = SYSTEMUI\.dial_face_alpha;\s*soup_checkout\("dataimage", false, true\)\.angle') 'Opacity preview still writes image angle'
+Assert-Condition ($uiDefaults -match 'focusmode:\s*true' -and $uiDefaults -match 'randomclr:\s*false' -and $uiDefaults -match 'bg3d:\s*false') 'The calm interface, fixed accent, and static background are not the defaults'
+Assert-Condition ($systemCreate -match 'pref_\[\$ "focusmode"\].*\? get_ : true' -and $systemCreate -match 'pref_\[\$ "bg3d"\].*\? get_ : false') 'Existing preferences do not migrate to the calm interface defaults'
+Assert-Condition ($uiinit -match 'is_action:\s*true,\s*text:\s*"Export"' -and $uiinit -match 'text:\s*"Format \+"') 'Primary Export or progressive Format navigation is missing'
+Assert-Condition (([regex]::Matches($uiinit, 'soup_checkout\("settings_(?:export|behavior|appearance|tools)", false, true\)')).Count -eq 4) 'Collapsed Settings panels are not all read from the global UI store'
+Assert-Condition ($uiinit -notmatch 'global\.pref\.focusmode\s*=\s*false') 'Accent controls must not disable the calm interface'
+Assert-Condition ($uiinit -match 'ui_apply_theme = function\(reroll_accent_ = false\)' -and $uiinit -match 'ui_apply_theme\(global\.pref\.randomclr\)') 'Random Accent must reroll only when explicitly enabled, not when Calm is toggled'
+Assert-Condition ($systemCreate -match 'ui_apply_theme\(global\.pref\.randomclr\)') 'Android preference restore does not apply the saved Random Accent behavior'
+Assert-Condition ($uiinit -match 'soup_store\("settings_open_export", e_, , true\)' -and $uiinit -match 'settings_open_export.*setColor\(ui_accentcolor\)') 'The Settings Export action does not follow accent changes'
+Assert-Condition ($uimanager -match 'keyboard_check\(vk_control\).*keyboard_check_pressed\(ord\("M"\)\)' -and $uimanager -match '!global\.pref\.focusmode \|\| ui_format_open') 'Formatting disclosure is not keyboard-accessible or does not reveal the full controls'
+Assert-Condition ($systemDraw -notmatch 'current_time\s*/\s*50' -and $backgroundStep -match '!global\.pref\.focusmode\s*&&\s*global\.pref\.bg3d') 'Editor background motion is still active in calm mode'
+Assert-Condition ($systemDraw -match 'else if \( ui_visible \) \{ //Editor-only placeholders') 'Editor placeholders can leak into rendered exports'
+Assert-Condition ($systemStep -match '!global\.pref\.focusmode\s*&&\s*\( mouse_pressed \|\| mouse_pressed_right \)') 'Decorative click particles are still active in calm mode'
+Assert-Condition ($luiMain -match 'setTooltipDelay' -and $luiMain -match 'tooltip_delay_ms' -and $luiMain -match 'self\.style\.color_accent') 'Tooltip delay or accessible focus indication is missing'
 Assert-Condition ($miniDraw -match 'hh_ = sprite_get_height\(face\)') 'Mini-speech height regression detected'
 Assert-Condition ($recovery -match 'soupy_restore_last_typed\(\);') 'Room-start recovery no longer restores the newest journal payload'
 Assert-Condition ($recovery.IndexOf('soupy_restore_last_typed();', [StringComparison]::Ordinal) -lt $recovery.IndexOf('file_exists(errname)', [StringComparison]::Ordinal)) 'Recovery is conditional on an error log again'
@@ -191,11 +209,11 @@ Assert-Condition ($zipAsync -match 'finally \{' -and $zipAsync -match 'scribble_
 Assert-Condition ($zipAsync -match 'planned_aliases_' -and $zipAsync -match 'Face aliases collide after normalization') 'ZIP preflight does not reject aliases that collide across planned entries'
 Assert-Condition (([regex]::Matches($zipHelpers, 'if \( soupy_zip_begin\(')).Count -eq 1 -and ([regex]::Matches($zipDrop, 'if \( soupy_zip_begin\(')).Count -eq 1) 'ZIP picker and drag-drop paths do not share the same importer'
 Assert-Condition ($updateCheck -match 'cmdr-chara/UTDR-SoupGen') 'Update checker does not target the fork'
-Assert-Condition ($manifest.game_version -eq '1.6.9') 'SOUP manifest version is not 1.6.9'
-Assert-Condition ($uimanager -match '#macro GAME_VERSION "1\.6\.9"') 'GAME_VERSION does not match the SOUP manifest'
-Assert-Condition ($windowsOptions.option_windows_version -eq '1.6.9.0') 'Windows version does not match release 1.6.9'
-Assert-Condition ($androidOptions.option_android_version -eq '1.6.9.0') 'Android version does not match release 1.6.9'
-Assert-Condition ($forkChangelog -match '(?m)^## 1\.6\.9\r?$') 'Fork changelog has no 1.6.9 entry'
+Assert-Condition ($manifest.game_version -eq '1.7.0') 'SOUP manifest version is not 1.7.0'
+Assert-Condition ($uimanager -match '#macro GAME_VERSION "1\.7\.0"') 'GAME_VERSION does not match the SOUP manifest'
+Assert-Condition ($windowsOptions.option_windows_version -eq '1.7.0.0') 'Windows version does not match release 1.7.0'
+Assert-Condition ($androidOptions.option_android_version -eq '1.7.0.0') 'Android version does not match release 1.7.0'
+Assert-Condition ($forkChangelog -match '(?m)^## 1\.7\.0\r?$') 'Fork changelog has no 1.7.0 entry'
 Assert-Condition ($windowsWorkflow -match 'secrets\.ACCESS_KEY' -and $windowsWorkflow -match 'bscotch/igor-setup@[0-9a-f]{40}' -and $windowsWorkflow -match 'bscotch/igor-build@[0-9a-f]{40}') 'Windows workflow is missing GameMaker authentication or immutable Igor action pins'
 Assert-Condition ($windowsWorkflow -match '\$\{\{\s*github\.workspace\s*\}\}/UTDR Textbox Gen/UTDR Textbox Gen\.yyp') 'Windows workflow must pass an absolute project path to Igor'
 Assert-Condition ($windowsWorkflow -match 'restore_gamemaker_prefabs\.ps1' -and $prefabRestore -match '@gm-tools/project-tool-win-x64@2026\.0\.173' -and $prefabRestore -match 'PREFABS RESTORE') 'Windows workflow does not restore pinned GameMaker prefab dependencies'

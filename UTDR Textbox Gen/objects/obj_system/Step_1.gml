@@ -38,8 +38,8 @@
 			soup_store("export dialogue func", function() { soup_store_clear(); SYSTEMUI.ui_paused = false; });
 		
 			var exportarr = [
-				new LuiText({ value: "Ready to export your dialogue?", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }),
-				new LuiText({ value: "Select your export option!", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }),
+				new LuiText({ value: "Ready to export?", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }),
+				new LuiText({ value: "Choose a format.", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }),
 			
 				new LuiButton({ text: "Static", height: 35, }).setTooltip("Export your dialogue as a static, non-animated screenshot.", true).addEvent(LUI_EV_CLICK, function(element_) {
 					var maincan = soup_checkout("maincan"), mainfunc = soup_checkout("export dialogue func", false); maincan.destroy(); SYSTEMUI.ui_paused = false;
@@ -78,7 +78,7 @@
 								new LuiText({ value: "Filename:", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }).setTooltip("The name to save the result as.\nLeave blank to use a soupy filename.", true),
 								new LuiInput({ value: SYSTEMUI.file_newname, height: 35, offset: 12, type_sfx: snd_txttype, color_normal: c_white, color_hover: c_gray, }).bindVariable(SYSTEMUI, "file_newname"),
 							]),
-							new LuiButton({ text: "Let's get soupy!!", height: 35, }).addEvent(LUI_EV_CLICK, function(element_) {
+							new LuiButton({ text: "Export", height: 35, }).addEvent(LUI_EV_CLICK, function(element_) {
 								var stacked_ = soup_checkout("stacked", false), page_ = soup_checkout("pageat", false), out_ = soup_checkout("bordout", false), vis_ = soup_checkout("bordvisible", false), xx_ = soup_checkout("xoff", false), yy_ = soup_checkout("yoff", false);
 								var mainfunc = soup_checkout("export dialogue func", false), maincan = soup_checkout("maincan", false);
 								if ( stacked_ && SYSTEMUI.dial_text_page_c <= 1 ) { SYSTEMUI.ui_paused = false; soupy_message("You must have more than one page.", "Go Back", 300, , , snd_error, , , true); exit; }
@@ -148,7 +148,7 @@
 										new LuiText({ value: "Filename:", text_halign: fa_center, text_valign: fa_middle, auto_width: false, auto_height: false, }).setTooltip("The name to save the result as.\nLeave blank to use a soupy filename.", true),
 										new LuiInput({ value: SYSTEMUI.file_newname, height: 35, offset: 12, type_sfx: snd_txttype, color_normal: c_white, color_hover: c_gray, }).bindVariable(SYSTEMUI, "file_newname"),
 									]),
-									new LuiButton({ text: "Let's get soupy!!", height: 35, }).addEvent(LUI_EV_CLICK, function(element_) {
+									new LuiButton({ text: "Export", height: 35, }).addEvent(LUI_EV_CLICK, function(element_) {
 										var typewrite = soup_checkout("typewrite", false), page_ = soup_checkout("pageat", false), out_ = soup_checkout("bordout", false), vis_ = soup_checkout("bordvisible", false), timer_ = soup_checkout("timerfor", false), delay_ = soup_checkout("delayb", false), quant_ = soup_checkout("quant", false);
 										var mainfunc = soup_checkout("export dialogue func", false), maincan = soup_checkout("maincan", false);
 										if ( string_lettersdigits(page_) == "" ) { page_ = 0; } if ( string_lettersdigits(timer_) == "" ) { timer_ = 180; } if ( string_lettersdigits(delay_) == "" ) { delay_ = 60; } if ( string_lettersdigits(quant_) == "" ) { quant_ = 1; }

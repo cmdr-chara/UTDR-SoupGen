@@ -12,7 +12,7 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 			if ( is_struct(pref_) ) {
 				var get_ = pref_[$ "firsttime"]; global.pref.firsttime = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "killaudio"]; global.pref.killaudio = !is_undefined(get_) ? get_ : false;
-				var get_ = pref_[$ "randomclr"]; global.pref.randomclr = !is_undefined(get_) ? get_ : true;
+				var get_ = pref_[$ "randomclr"]; global.pref.randomclr = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "sizematters"]; global.pref.sizematters = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "sizematterstop"]; global.pref.sizematterstop = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "anyborder"]; global.pref.anyborder = !is_undefined(get_) ? get_ : false;
@@ -20,7 +20,8 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 				var get_ = pref_[$ "checkupdates"]; global.pref.checkupdates = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "showref"]; global.pref.showref = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "openresult"]; global.pref.openresult = !is_undefined(get_) ? get_ : true;
-				var get_ = pref_[$ "bg3d"]; global.pref.bg3d = !is_undefined(get_) ? get_ : ( is_android() ? false : true );
+				var get_ = pref_[$ "focusmode"]; global.pref.focusmode = !is_undefined(get_) ? get_ : true;
+				var get_ = pref_[$ "bg3d"]; global.pref.bg3d = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "showfps"]; global.pref.showfps = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "fix"]; global.pref.fix = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "confirmexport"]; global.pref.confirmexport = !is_undefined(get_) ? get_ : true;
@@ -31,17 +32,9 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 				var get_ = pref_[$ "gifbgclr"]; global.pref.gifbgclr = !is_undefined(get_) ? get_ : c_lime; if ( global.pref.gifbgclr == c_fuchsia && !global.pref.fix ) { global.pref.gifbgclr = c_lime; global.pref.fix = true; } screenshot_back = global.pref.gifbgclr;
 				var get_ = pref_[$ "autopoint"]; global.pref.autopoint = !is_undefined(get_) ? get_ : true; dial_point_auto = global.pref.autopoint;
 				var get_ = pref_[$ "macros"]; global.pref.macros = !is_undefined(get_) ? get_ : { example: "[c_go][wave][pulse]I'm so soupy!![/]", example2: "This is a really long macrooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo", }; 
-				var get_ = pref_[$ "themeclr"]; global.pref.themeclr = !is_undefined(get_) ? get_ : c_orange; if ( !global.pref.randomclr && is_android() ) { 
-					ui_accentcolor = global.pref.themeclr;
-					soup_checkout("datamainuicolor", false, true).setColor(ui_accentcolor);
-					soup_checkout("datagifcolor", false, true).setColor(screenshot_back);
-					var i = 0, count_ = array_length(butt);
-					repeat ( count_ ) { 
-						butt[i].data.color = ui_accentcolor; if ( butt[i].data.color_butt != c_yellow ) { butt[i].data.color_butt = ui_accentcolor; }
-					i++; }
-					soupy_lui.style.color_secondary = ui_accentcolor;
-					soupy_lui.updateMainUiSurface();
-				}
+				var get_ = pref_[$ "themeclr"]; global.pref.themeclr = !is_undefined(get_) ? get_ : make_color_rgb(200, 169, 107);
+				if ( variable_instance_exists(id, "ui_apply_theme") ) { ui_apply_theme(global.pref.randomclr); }
+				var gif_swatch_ = soup_checkout("datagifcolor", false, true); if ( !is_undefined(gif_swatch_) ) { gif_swatch_.setColor(screenshot_back); }
 			}
 		}
 	}
@@ -512,7 +505,7 @@ ui_init();
 #endregion
 
 #region First Time
-	var txt_ = $"Ayy! Welcome to [wheel][c_gold]UTDR SoupGen![/]|I see that it's your first time booting this up.|I would recommend [c_yellow]reading the[c_yellow] help guide before you continue[/].||SoupGen got a [slant]lot[/] of power to it compared|to your average UTDR textbox generator,|so do familarize yourself with what all you can do!| |With that being said, [wave][c_lime]I hope you enjoy|this release!|Once you're done, just press ESC for export options!{is_android() ? "| |You're using the Android version!|SoupGen was not optimized for phones,|but plenty of work has gone into making the experience similar|to PCs. You may still struggle in some places tho, sorry!||You will now be asked where to let SoupGen store files at.|I recommend your Pictures folder." : ( is_wasm() ? "| |You're using the experimental WASM(Web) version!|SoupGen was NOT optimized for the web.|See the known issues in the description." : "" )}";
+	var txt_ = $"Welcome to UTDR SoupGen.|Write dialogue in Write, adjust Text, Portrait and Border,|then choose Export in the top-right.|The Help Guide covers markup and advanced workflows.{is_android() ? "||Android: choose a folder where SoupGen can store exports." : ( is_wasm() ? "||Web builds have additional import and export limits." : "" )}";
 	
 	save_pref = function () {
 		var data_ = json_stringify(global.pref);
@@ -550,7 +543,7 @@ ui_init();
 		}
 	}
 	
-	if ( global.pref.firsttime ) { var id_ = soupy_message(txt_, "Let's get soupy!", 480, , , snd_dimbox, fnt_abaddon, save_, , true, , , fa_top); soup_store("firsttime", id_, , true); }
+	if ( global.pref.firsttime ) { var id_ = soupy_message(txt_, "Open Help Guide", 480, , , snd_dimbox, fnt_speech, save_, , true, , , fa_top); soup_store("firsttime", id_, , true); }
 #endregion
 
 #region Errors with Auto-loading
