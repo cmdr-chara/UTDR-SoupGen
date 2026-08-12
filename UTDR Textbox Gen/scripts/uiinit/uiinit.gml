@@ -62,16 +62,18 @@ function ui_init() {
 				if ( global.pref.focusmode ) {
 					style_.color_text = ui_textcolor; style_.color_text_hint = ui_mutedcolor; style_.color_hover = ui_bordercolor;
 					style_.color_input = ui_surface_high; style_.color_input_hover = ui_bordercolor;
-					style_.color_toggle_track = ui_bgcolor; style_.color_toggle_track_active = ui_accentcolor; style_.color_toggle_thumb = ui_textcolor;
+					style_.color_toggle_track = ui_bordercolor; style_.color_toggle_track_active = ui_accentcolor; style_.color_toggle_thumb = ui_textcolor; style_.toggle_slider_inset = 3;
+					style_.color_scroll_track = ui_surface_high; style_.color_scroll_thumb = ui_mutedcolor; style_.color_scroll_thumb_active = ui_accentcolor;
 					style_.text_hint_alpha = 1;
 					style_.sound_hover = undefined;
 					style_.setColors(ui_surfacecolor, ui_surface_high, ui_bgcolor, ui_accentcolor, ui_bordercolor);
-					style_.setSprites(spr_pixel, spr_border_header).setSpriteCheckbox(spr_border_header, spr_pixel).setSpriteToggleSwitch(spr_border_header, spr_border_header);
+					style_.setSprites(spr_pixel, spr_pixel).setSpriteCheckbox(spr_border_header, spr_pixel).setSpriteToggleSwitch(spr_border_header, spr_pixel);
 				}
 				else {
 					style_.color_text = c_white; style_.color_text_hint = c_gray; style_.color_hover = c_yellow;
 					style_.color_input = undefined; style_.color_input_hover = undefined;
-					style_.color_toggle_track = undefined; style_.color_toggle_track_active = undefined; style_.color_toggle_thumb = undefined;
+					style_.color_toggle_track = undefined; style_.color_toggle_track_active = undefined; style_.color_toggle_thumb = undefined; style_.toggle_slider_inset = 0;
+					style_.color_scroll_track = undefined; style_.color_scroll_thumb = undefined; style_.color_scroll_thumb_active = undefined;
 					style_.text_hint_alpha = 0.5;
 					style_.sound_hover = snd_sel_switch;
 					style_.setColors(c_white, ui_accentcolor, #f43e83, #15ee97, c_gray);
@@ -103,7 +105,7 @@ function ui_init() {
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
 			butt[i] = new Button({ id_: i, text: "Settings", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: -1, is_action: true, text: "Export", x: nav_x_[i], y: y_, yoff: 0, padd_multi: global.pref.focusmode ? 5 : 8, leeway: global.pref.focusmode ? 8 : 5, sprite: spr_, color_butt: global.pref.focusmode ? ui_surfacecolor : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_surface_high : merge_color(ui_accentcolor, c_white, 0.15), color: global.pref.focusmode ? ui_accentcolor : ui_bgcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: -1, is_action: true, text: "Export", x: nav_x_[i], y: y_, yoff: 0, padd_multi: global.pref.focusmode ? 5 : 8, leeway: global.pref.focusmode ? 8 : 5, sprite: spr_, color_butt: global.pref.focusmode ? ui_surfacecolor : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_surface_high : merge_color(ui_accentcolor, c_white, 0.15), color: global.pref.focusmode ? merge_color(ui_accentcolor, ui_textcolor, 0.2) : ui_bgcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_a); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = function () { soup_store("androidexport", , , true); } }
 			call_later(1, time_source_units_frames, on_reset_); //Reset all buttons on start
 			call_later(1, time_source_units_frames, function() { if ( !is_android() ) { window_progress(window_progress_none); } });
@@ -186,18 +188,22 @@ function ui_init() {
 				color_hover: global.pref.focusmode ? ui_bordercolor : c_yellow,
 				color_input: global.pref.focusmode ? ui_surface_high : undefined,
 				color_input_hover: global.pref.focusmode ? ui_bordercolor : undefined,
-				color_toggle_track: global.pref.focusmode ? ui_bgcolor : undefined,
+				color_toggle_track: global.pref.focusmode ? ui_bordercolor : undefined,
 				color_toggle_track_active: global.pref.focusmode ? ui_accentcolor : undefined,
 				color_toggle_thumb: global.pref.focusmode ? ui_textcolor : undefined,
+				color_scroll_track: global.pref.focusmode ? ui_surface_high : undefined,
+				color_scroll_thumb: global.pref.focusmode ? ui_mutedcolor : undefined,
+				color_scroll_thumb_active: global.pref.focusmode ? ui_accentcolor : undefined,
+				toggle_slider_inset: global.pref.focusmode ? 3 : 0,
 				text_hint_alpha: global.pref.focusmode ? 1 : 0.5,
 				sound_click: snd_select, sound_hover: global.pref.focusmode ? undefined : snd_sel_switch,
 			}) //Main Style
 				.setRenderRegionOffset([10, 10, 10, 10])
 				.setFonts(fnt_speech, fnt_determination, fnt_determination)
 				.setColors(global.pref.focusmode ? ui_surfacecolor : c_white, global.pref.focusmode ? ui_surface_high : ui_accentcolor, global.pref.focusmode ? ui_bgcolor : #f43e83, global.pref.focusmode ? ui_accentcolor : #15ee97, global.pref.focusmode ? ui_bordercolor : c_gray)
-				.setSprites(global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined, global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined)
+				.setSprites(global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined, global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined)
 				.setSpriteCheckbox(global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined, spr_pixel)
-				.setSpriteToggleSwitch(global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined, global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined)
+				.setSpriteToggleSwitch(global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined, global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined)
 				.setSpriteComboBoxArrow(spr_soul_tiny)
 			soupy_lui = new LuiMain().setStyle(soupy_style);
 			soupy_lui.displayFocusedElement(false);
@@ -387,7 +393,7 @@ function ui_init() {
 			
 				new LuiRow().setFlexGrow(1).centerContent().addContent([ //Visbility
 					new LuiText({ value: "Visible:", width: 110, text_halign: fa_center, text_valign: fa_middle, font: fnt_speech, }),
-					new LuiToggleSwitch({ value: bord_anim, ease: global.Ease.OutBack, sound_click: snd_bump, sound_click_pitch: 1.3,  }).bindVariable(self, "bord_box_visible").addEvent(LUI_EV_VALUE_UPDATE, function(e_) { soup_checkout("dataimageB", false, true).setAlpha(e_.get()); }),
+					new LuiToggleSwitch({ value: bord_box_visible, ease: global.Ease.OutBack, sound_click: snd_bump, sound_click_pitch: 1.3,  }).bindVariable(self, "bord_box_visible").addEvent(LUI_EV_VALUE_UPDATE, function(e_) { soup_checkout("dataimageB", false, true).setAlpha(e_.get()); }),
 				]),
 			
 				new LuiHorizontalRule({ height: 5, }),

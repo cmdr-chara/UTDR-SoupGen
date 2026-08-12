@@ -12,6 +12,7 @@ This fork tracks [SoupTaels/UTDR-SoupGen](https://github.com/SoupTaels/UTDR-Soup
 - Added delayed tooltips, clearer action labels, and editor-only placeholder guards so UI guidance cannot leak into exports.
 - Corrected the initial Calm UI regressions: dark inputs remain legible, toggles and scrollbars retain their shape, old random-theme preferences migrate safely, formatting clicks are consumed once, and collapsed panels no longer show inert scroll tracks.
 - Refined the top navigation into a compact rail with neutral tabs, a single active underline, and a restrained right-aligned Export action.
+- Polished the Calm form states with flat inputs, inset toggle thumbs, proportional high-contrast scrollbars, a dismissible first-run guide prompt, and a readable empty portrait preview.
 - Extended the static validator with regression checks for calm defaults, control contrast, formatting access, Settings storage, motion gates, accent updates, and export-safe placeholders.
 
 ## 1.6.9

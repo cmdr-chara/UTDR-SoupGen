@@ -263,11 +263,12 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 				}
 				else if ( ui_visible ) { //Editor-only placeholders
 					if ( FACE_CURRENT == -1 ) {
-						var emptytxt = scribble(global.pref.focusmode ? "[c_dkgray][scale,2]No portrait selected" : "[c_dkgray][wheel][scale,3](But nobody came.)")
-						.align(fa_left, fa_top)
-						.draw(bordx + 200, bordy + 50);
+						var emptytxt = scribble(global.pref.focusmode ? "[c_gray][scale,2]No portrait selected" : "[c_dkgray][wheel][scale,3](But nobody came.)")
+							.align(fa_left, fa_top)
+							.draw(bordx + 200, bordy + 50);
 					
-						draw_sprite(spr_face_placeholder, 0, bordx + 9, bordy + 8);  //Portrait placeholder
+						if ( global.pref.focusmode ) { draw_sprite_ext(spr_face_placeholder, 0, bordx + 9, bordy + 8, 1, 1, 0, ui_mutedcolor, 0.85); }
+						else { draw_sprite(spr_face_placeholder, 0, bordx + 9, bordy + 8); }
 					}
 				}
 			#endregion

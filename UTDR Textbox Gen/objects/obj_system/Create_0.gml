@@ -511,8 +511,6 @@ ui_init();
 #endregion
 
 #region First Time
-	var txt_ = $"Welcome to UTDR SoupGen.|Write dialogue in Write, adjust Text, Portrait and Border,|then choose Export in the top-right.|The Help Guide covers markup and advanced workflows.{is_android() ? "||Android: choose a folder where SoupGen can store exports." : ( is_wasm() ? "||Web builds have additional import and export limits." : "" )}";
-	
 	save_pref = function () {
 		var data_ = json_stringify(global.pref);
 		if ( !soupy_store_write(PREF_SOUP, PREF_SOUP_BAK, "preferences", data_) ) {
@@ -539,10 +537,9 @@ ui_init();
 		};
 	}
 	
-	var save_ = function () {
+	var finish_welcome_ = function () {
 		global.pref.firsttime = false;
 		SYSTEMUI.save_pref();
-		soupy_url("https://rentry.co/utdrsoupguides", , , 0);
 		if ( is_android() ) {
 			var perm_r = "android.permission.READ_EXTERNAL_STORAGE", perm_w = "android.permission.WRITE_EXTERNAL_STORAGE";
 			if ( os_check_permission(perm_r) == os_permission_denied || os_check_permission(perm_w) == os_permission_denied ) { os_request_permission(perm_r, perm_w); }
@@ -550,7 +547,20 @@ ui_init();
 		}
 	}
 	
-	if ( global.pref.firsttime ) { var id_ = soupy_message(txt_, "Open Help Guide", 480, , , snd_dimbox, fnt_speech, save_, , true, , , fa_top); soup_store("firsttime", id_, , true); }
+	if ( global.pref.firsttime ) {
+		var welcome_items_ = [
+			new LuiText({ value: "Welcome to UTDR SoupGen", font: fnt_determination, color: SYSTEMUI.ui_textcolor, }),
+			new LuiText({ value: "Write dialogue, adjust its appearance,", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, }),
+			new LuiText({ value: "then use Export in the top-right.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, }),
+			new LuiText({ value: "The Help Guide is always available in Settings.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, }),
+			new LuiButton({ text: "Open Help Guide", height: 30, color: SYSTEMUI.ui_surface_high, text_color: SYSTEMUI.ui_textcolor, font: fnt_speech, })
+				.addEvent(LUI_EV_CLICK, function() { soupy_url("https://rentry.co/utdrsoupguides", , , 0); }),
+		];
+		if ( is_android() ) { array_insert(welcome_items_, 4, new LuiText({ value: "Continue to choose an export folder.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, })); }
+		else if ( is_wasm() ) { array_insert(welcome_items_, 4, new LuiText({ value: "Web builds have additional import and export limits.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, })); }
+		var id_ = soupy_popup(welcome_items_, finish_welcome_, "Continue", 420, 170, 6, snd_dimbox, fnt_speech, , 6, 32);
+		soup_store("firsttime", id_, , true);
+	}
 #endregion
 
 #region Errors with Auto-loading

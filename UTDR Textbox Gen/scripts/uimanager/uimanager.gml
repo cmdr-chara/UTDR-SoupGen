@@ -45,7 +45,7 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 			padd_multi = global.pref.focusmode ? 5 : 8; leeway = global.pref.focusmode ? 8 : 5;
 			color_butt = global.pref.focusmode ? SYSTEMUI.ui_surfacecolor : SYSTEMUI.ui_accentcolor;
 			color_butt_hover = global.pref.focusmode ? SYSTEMUI.ui_surface_high : merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
-			color = global.pref.focusmode ? SYSTEMUI.ui_accentcolor : SYSTEMUI.ui_bgcolor;
+			color = global.pref.focusmode ? merge_color(SYSTEMUI.ui_accentcolor, SYSTEMUI.ui_textcolor, 0.2) : SYSTEMUI.ui_bgcolor;
 		}
 		else {
 			padd_multi = 8; leeway = 5;
