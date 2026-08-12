@@ -50,7 +50,7 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 	}
 	function nav_active_() {
 		yoff = 0; text = text_static;
-		color_butt = SYSTEMUI.ui_accentcolor; color_butt_hover = SYSTEMUI.ui_accentcolor; color = SYSTEMUI.ui_bgcolor;
+		color_butt = SYSTEMUI.ui_bordercolor; color_butt_hover = merge_color(SYSTEMUI.ui_bordercolor, SYSTEMUI.ui_textcolor, 0.12); color = SYSTEMUI.ui_textcolor;
 	}
 	function on_enter_() {
 		if ( SYSTEMUI.ui_tab != id_ ) {
@@ -322,10 +322,16 @@ function Button(datastruct_ = undefined) constructor {
 			if ( UI_MESSAGE ) { 
 				if ( !on_enter ) { on_enter = true; on_leave = false; if ( !is_undefined(data[$ "on_enter"]) && data[$ "on_enter"] != -1 ) { data[$ "on_enter"](); } } //Mouse Entered Function
 				if ( !is_undefined(data[$ "on_hover"]) && data[$ "on_hover"] != -1 ) { data[$ "on_hover"](); } //Mouse Hovering Function
-				if ( mouse_pressed && !is_undefined(data[$ "on_click"]) && data[$ "on_click"] != -1 ) { data[$ "on_click"](); exit; } //Mouse Pressed Function
+				if ( mouse_pressed && !is_undefined(data[$ "on_click"]) && data[$ "on_click"] != -1 ) {
+					if ( !SYSTEMUI.ui_button_click_consumed ) { SYSTEMUI.ui_button_click_consumed = true; data[$ "on_click"](); }
+					exit;
+				} //Mouse Pressed Function
 				if ( mouse_check && !is_undefined(data[$ "on_held"]) && data[$ "on_held"] != -1 ) { data[$ "on_held"](); } //Mouse Held Function
 				if ( mouse_released && !is_undefined(data[$ "on_released"]) && data[$ "on_released"] != -1) { data[$ "on_released"](); } //Mouse Released Function
-				if ( mouse_pressed_right && !is_undefined(data[$ "on_click_right"]) && data[$ "on_click_right"] != -1 ) { data[$ "on_click_right"](); exit; } //Mouse Pressed Function
+				if ( mouse_pressed_right && !is_undefined(data[$ "on_click_right"]) && data[$ "on_click_right"] != -1 ) {
+					if ( !SYSTEMUI.ui_button_click_right_consumed ) { SYSTEMUI.ui_button_click_right_consumed = true; data[$ "on_click_right"](); }
+					exit;
+				} //Mouse Pressed Function
 				if ( mouse_check_right && !is_undefined(data[$ "on_held_right"]) && data[$ "on_held_right"] != -1 ) { data[$ "on_held_right"](); } //Mouse Held Function
 				if ( mouse_released_right && !is_undefined(data[$ "on_released_right"]) && data[$ "on_released_right"] != -1 ) { data[$ "on_released_right"](); } //Mouse Released Function
 			}
@@ -476,9 +482,9 @@ function ui_manage() {
 		QuillDrawOverlays();
 		if ( global.pref.focusmode ) {
 			format_button.data.text = ui_format_open ? "Format -" : "Format +";
-			format_button.data.color_butt = ui_format_open ? ui_accentcolor : ui_surface_high;
-			format_button.data.color_butt_hover = ui_format_open ? ui_accentcolor : ui_bordercolor;
-			format_button.data.color = ui_format_open ? ui_bgcolor : ui_textcolor;
+			format_button.data.color_butt = ui_format_open ? ui_bordercolor : ui_surface_high;
+			format_button.data.color_butt_hover = ui_bordercolor;
+			format_button.data.color = ui_textcolor;
 			format_button.update();
 		}
 		else {
@@ -510,7 +516,10 @@ function ui_manage() {
 			else { //Between highlighted text
 				result = string_insert(txt_insert, string_insert(txt_insert_end, txt_, pos_2), pos_);
 			}
-			textinput.SetValue(result); textinput.SetCaret(pos_ - 1); update_text();
+			var target_caret_ = getpos_.has_selection
+				? getpos_._end + string_length(txt_insert) + string_length(txt_insert_end)
+				: getpos_.start + string_length(txt_insert);
+			textinput.SetValue(result); textinput.SetCaret(target_caret_); update_text();
 			sfx_play(snd_bump, , , 1.5); audio_stop_sound(snd_updated);
 		})); }
 	#endregion
@@ -543,7 +552,7 @@ function ui_manage() {
 				if ( effects_i > 5 ) { continue; }
 				var effects_true = effects_i + ui_effoff;
 				var effects_cur = effects_[effects_true]; //Current effect
-				var butt_data = { x: 180 + ( 75 * effects_i ), y: 95, color_butt: global.pref.focusmode ? ui_surface_high : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_bordercolor : c_yellow, color: global.pref.focusmode ? ui_textcolor : c_black, text: global.pref.focusmode ? string_trim(effects_cur) : $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: global.pref.focusmode ? 3 : 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) }
+				var butt_data = { x: 180 + ( 75 * effects_i ), y: 101, color_butt: global.pref.focusmode ? ui_surface_high : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_bordercolor : c_yellow, color: global.pref.focusmode ? ui_textcolor : c_black, text: global.pref.focusmode ? string_trim(effects_cur) : $"{effects_cur} [spr_effects_icons,{effects_true}]", padd_multi: global.pref.focusmode ? 3 : 4, on_hover: undefined, on_click: method({ effects_cur }, function () { SYSTEMUI.butt_func(string_letters(string_lower(effects_cur))); }) }
 				var butt_ = new Button(butt_data); butt_.update(); //Create button
 			effects_i++; }
 				
@@ -552,7 +561,7 @@ function ui_manage() {
 				if ( variable_instance_get(obj_system, "within_hover") == undefined ) { variable_instance_set(obj_system, "within_hover", false); }
 				if ( variable_instance_get(obj_system, "yscale_") == undefined ) { variable_instance_set(obj_system, "yscale_", 1); }
 				if ( ui_effoff < effects_off ) {
-					var x_ = 605, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 10, 640) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
+					var x_ = 605, y_ = 104, within_ = range_within(mouse_x_gui, x_ - 10, 640) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hover ) { within_hover = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 1.3); ui_effoff = approach(ui_effoff, effects_off, 1); yscale_ = 0.5; } //Pressed
@@ -567,7 +576,7 @@ function ui_manage() {
 				if ( variable_instance_get(obj_system, "within_hover2") == undefined ) { variable_instance_set(obj_system, "within_hover2", false); }
 				if ( variable_instance_get(obj_system, "yscale_2") == undefined ) { variable_instance_set(obj_system, "yscale_2", 1); }
 				if ( ui_effoff > 0 ) {
-					var x_ = 130, y_ = 98, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 10) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
+					var x_ = 130, y_ = 104, within_ = range_within(mouse_x_gui, x_ - 40, x_ + 10) && range_within(mouse_y_gui, y_ - 10, y_ + 10);
 					if ( within_ ) {
 						if ( !within_hover2 ) { within_hover2 = true; if ( !global.pref.focusmode ) { sfx_play(snd_sel_switch); } } //Hover
 						if ( mouse_pressed ) { sfx_play(snd_sel_switch, 0, , 0.7); ui_effoff = approach(ui_effoff, 0, 1); yscale_2 = 0.5; } //Pressed
@@ -607,7 +616,12 @@ function ui_manage() {
 			
 	#region Change Cursor
 		if ( UI_MESSAGE ) {
-			if ( global.pref.focusmode && range_within(mouse_x_gui, 2, 86) && range_within(mouse_y_gui, 78, 114) ) { window_set_cursor(cr_handpoint); }
+			var format_hover_ = false;
+			if ( global.pref.focusmode && !is_undefined(format_button.button) ) {
+				var format_bbox_ = format_button.button.get_bbox(format_button.data.x, format_button.data.y);
+				format_hover_ = range_within(mouse_x_gui, format_bbox_.left, format_bbox_.right) && range_within(mouse_y_gui, format_bbox_.top, format_bbox_.bottom);
+			}
+			if ( format_hover_ ) { window_set_cursor(cr_handpoint); }
 			else if ( ( !global.pref.focusmode || ui_format_open ) && range_within(mouse_x_gui, 120, 620) && range_within(mouse_y_gui, 60, 120) ) { window_set_cursor(global.pref.focusmode ? cr_handpoint : cr_drag); } //At the command palette
 			else if ( range_within(mouse_x_gui, 20, 620) && range_within(mouse_y_gui, 110, 300) ) { window_set_cursor(cr_beam); } //At the textbox
 			else { if ( mouse_y_gui >= 60 ) { window_set_cursor(cr_default); } }

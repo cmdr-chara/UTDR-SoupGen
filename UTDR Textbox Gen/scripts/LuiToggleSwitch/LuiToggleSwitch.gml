@@ -41,7 +41,9 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 		var _draw_height = min(self.width, self.height);
 		// Base
 		if !is_undefined(self.style.sprite_toggleswitch) {
-			var _blend_color = merge_color(self.style.color_back, self.style.color_accent, self.slider_color_value);
+			var _track_color = self.style.color_toggle_track ?? self.style.color_back;
+			var _track_active_color = self.style.color_toggle_track_active ?? self.style.color_accent;
+			var _blend_color = merge_color(_track_color, _track_active_color, self.slider_color_value);
 			if self.deactivated {
 				_blend_color = merge_color(_blend_color, c_black, 0.5);
 			}
@@ -49,7 +51,7 @@ function LuiToggleSwitch(_params = {}) : LuiBase(_params) constructor {
 		}
 		// Slider
 		if !is_undefined(self.style.sprite_toggleswitch_slider) {
-			var _blend_color = self.style.color_primary;
+			var _blend_color = self.style.color_toggle_thumb ?? self.style.color_primary;
 			if !self.deactivated {
 				if self.isMouseHovered() {
 					_blend_color = merge_color(_blend_color, self.style.color_hover, 0.5);

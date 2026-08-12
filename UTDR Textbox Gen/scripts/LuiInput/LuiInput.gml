@@ -175,10 +175,12 @@ function LuiInput(_params = {}) : LuiBase(_params) constructor {
     self.draw = function() {
         //Base
         if !is_undefined(self.style.sprite_input) {
-            var _blend_color = self.color_normal ?? self.style.color_back;
+            var _normal_color = self.style.color_input ?? self.color_normal ?? self.style.color_back;
+            var _hover_color = self.style.color_input_hover ?? self.color_hover ?? self.style.color_hover;
+            var _blend_color = _normal_color;
             if !self.deactivated {
                 if !self.has_focus && self.isMouseHovered() {
-                    _blend_color = merge_color(self.color_normal ?? self.style.color_back, self.color_hover ?? self.style.color_hover, 0.5);
+                    _blend_color = merge_color(_normal_color, _hover_color, 0.5);
                 }
                 if self.is_incorrect {
                     _blend_color = merge_color(_blend_color, self.style.color_semantic_error, 0.5);
@@ -217,7 +219,7 @@ function LuiInput(_params = {}) : LuiBase(_params) constructor {
         //Placeholder
         if self.value == "" && !self.has_focus {
             _display_text = self.placeholder;
-            draw_set_alpha(0.5);
+            draw_set_alpha(self.style.text_hint_alpha);
             if self.is_incorrect {
                 draw_set_color(merge_color(self.style.color_text_hint, self.style.color_semantic_error, 0.5));
             } else {
@@ -249,6 +251,12 @@ function LuiInput(_params = {}) : LuiBase(_params) constructor {
             }
             draw_sprite_stretched_ext(self.style.sprite_input_border, 0, self.x, self.y, self.width, self.height, _border_color, 1);
         }
+		else if self.has_focus {
+			//Keep focus inside the control. The old global focus rectangle ignored
+			//scroll/popup clipping, while filled nine-slice sprites would cover text.
+			draw_set_color(self.style.color_accent);
+			draw_rectangle(self.x + 1, self.y + 1, self.x + self.width - 2, self.y + self.height - 2, true);
+		}
     }
     
     self.addEvent(LUI_EV_CREATE, function(_e) {

@@ -1,6 +1,8 @@
 ///@desc Animations, Effects, Etc.
 //if ( live_call() ) { return live_result; } 
 outlinesoup_step(640, 480);
+if ( !mouse_check ) { ui_button_click_consumed = false; }
+if ( !mouse_check_right ) { ui_button_click_right_consumed = false; }
 if ( ui_visible ) { 
 	var tab_yoff_target_ = !bord_visible ? ( ui_tab == 0 ? 55 : 65 ) : 0;
 	ui_tab_yoff = global.pref.focusmode ? tab_yoff_target_ : lerp(ui_tab_yoff, tab_yoff_target_, 0.15); //Focus mode avoids decorative layout motion

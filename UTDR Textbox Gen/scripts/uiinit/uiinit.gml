@@ -7,8 +7,8 @@ function ui_init() {
 		ui_bordercolor = make_color_rgb(82, 66, 113);
 		ui_textcolor = make_color_rgb(242, 238, 245);
 		ui_mutedcolor = make_color_rgb(157, 140, 187);
-		ui_focusaccent = make_color_rgb(200, 169, 107);
-		ui_accentcolor = global.pref.randomclr ? make_color_hsv(irandom(255), irandom_range(150, 230), 255) : global.pref.themeclr;
+		ui_focusaccent = make_color_rgb(182, 154, 196);
+		ui_accentcolor = ui_focusaccent;
 		ui_tab = 0; //Current tab (0 - Write, 1 - Text, 2 - Portrait, 3 - Border, 4 - Settings)
 		screenshot = false; //Screenshot task
 		screenshot_stacked = false; //Whether dialogue exports are stacked
@@ -17,6 +17,8 @@ function ui_init() {
 		record = { enabled: false, type: 0, frames: 0, framesmax: 0, frames_total: 0, frames_limit: 0, frame_bytes: 0, byte_limit: 0, id_: -1, quant: 1, delay: 60, failed: false, }; //Whether to record, the type of recording(0 - static, 1 - wait for dialogue to finish), and how long to record for
 		ui_visible = true; //Whether the UI should be visible
 		ui_effoff = 0; //Effects array offset 
+		ui_button_click_consumed = false; //One callback per physical press, even if Draw GUI runs more than once
+		ui_button_click_right_consumed = false;
 		ui_tab_yoff = 0; //Y offset for the orange and white borders
 		ui_paused = false; //Whether to freeze ui elements
 		file_dragging = false; //Whether a file is being dragged on screen.
@@ -34,29 +36,53 @@ function ui_init() {
 		scribble_font_set_default("fnt_determination_nomono");
 		instance_create_depth(0, 0, -2, obj_updatechecker);
 
+		ui_resolve_accent = function(reroll_accent_ = false) {
+			if ( global.pref.randomclr ) {
+				var hue_ = reroll_accent_ ? irandom(255) : color_get_hue(ui_accentcolor);
+				ui_accentcolor = global.pref.focusmode
+					? make_color_hsv(hue_, 64, 205)
+					: make_color_hsv(hue_, irandom_range(150, 230), 255);
+			}
+			else if ( global.pref.focusmode ) {
+				ui_accentcolor = make_color_hsv(
+					color_get_hue(global.pref.themeclr),
+					min(color_get_saturation(global.pref.themeclr), 88),
+					clamp(color_get_value(global.pref.themeclr), 170, 215)
+				);
+			}
+			else { ui_accentcolor = global.pref.themeclr; }
+		}
+		ui_resolve_accent(true);
+
 		ui_apply_theme = function(reroll_accent_ = false) {
-			if ( reroll_accent_ && global.pref.randomclr ) { ui_accentcolor = make_color_hsv(irandom(255), irandom_range(150, 230), 255); }
-			else if ( !global.pref.randomclr ) { ui_accentcolor = global.pref.themeclr; }
+			ui_resolve_accent(reroll_accent_);
 
 			if ( variable_instance_exists(id, "soupy_lui") ) {
 				var style_ = soupy_lui.style;
 				if ( global.pref.focusmode ) {
 					style_.color_text = ui_textcolor; style_.color_text_hint = ui_mutedcolor; style_.color_hover = ui_bordercolor;
+					style_.color_input = ui_surface_high; style_.color_input_hover = ui_bordercolor;
+					style_.color_toggle_track = ui_bgcolor; style_.color_toggle_track_active = ui_accentcolor; style_.color_toggle_thumb = ui_textcolor;
+					style_.text_hint_alpha = 1;
 					style_.sound_hover = undefined;
 					style_.setColors(ui_surfacecolor, ui_surface_high, ui_bgcolor, ui_accentcolor, ui_bordercolor);
+					style_.setSprites(spr_pixel, spr_border_header).setSpriteCheckbox(spr_border_header, spr_pixel).setSpriteToggleSwitch(spr_border_header, spr_border_header);
 				}
 				else {
 					style_.color_text = c_white; style_.color_text_hint = c_gray; style_.color_hover = c_yellow;
+					style_.color_input = undefined; style_.color_input_hover = undefined;
+					style_.color_toggle_track = undefined; style_.color_toggle_track_active = undefined; style_.color_toggle_thumb = undefined;
+					style_.text_hint_alpha = 0.5;
 					style_.sound_hover = snd_sel_switch;
 					style_.setColors(c_white, ui_accentcolor, #f43e83, #15ee97, c_gray);
+					style_.setSprites(spr_border_undertale_outlined, spr_border_undertale_outlined).setSpriteCheckbox(spr_border_undertale_outlined, spr_pixel).setSpriteToggleSwitch(spr_border_undertale_outlined, spr_border_undertale_outlined);
 				}
-				soupy_lui.displayFocusedElement(true);
+				soupy_lui.displayFocusedElement(false);
 				soupy_lui.setTooltipDelay(global.pref.focusmode ? 600 : 0);
 				soupy_lui.updateMainUiSurface();
 			}
 
 			var swatch_ = soup_checkout("datamainuicolor", false, true); if ( !is_undefined(swatch_) ) { swatch_.setColor(ui_accentcolor); }
-			var export_button_ = soup_checkout("settings_open_export", false, true); if ( !is_undefined(export_button_) ) { export_button_.setColor(ui_accentcolor); }
 			if ( variable_instance_exists(id, "butt") && variable_instance_exists(id, "soupy_panel_extra") ) { on_reset_(false); }
 		}
 	
@@ -149,13 +175,27 @@ function ui_init() {
 
 	#region Menu Sections
 		#region Init Style
-			var soupy_style = new LuiStyle({ padding: 10, gap: 8, color_text: global.pref.focusmode ? ui_textcolor : c_white, color_hover: global.pref.focusmode ? ui_bordercolor : c_yellow, sound_click: snd_select, sound_hover: global.pref.focusmode ? undefined : snd_sel_switch, }) //Main Style
+			var soupy_style = new LuiStyle({
+				padding: 10, gap: 8,
+				color_text: global.pref.focusmode ? ui_textcolor : c_white,
+				color_hover: global.pref.focusmode ? ui_bordercolor : c_yellow,
+				color_input: global.pref.focusmode ? ui_surface_high : undefined,
+				color_input_hover: global.pref.focusmode ? ui_bordercolor : undefined,
+				color_toggle_track: global.pref.focusmode ? ui_bgcolor : undefined,
+				color_toggle_track_active: global.pref.focusmode ? ui_accentcolor : undefined,
+				color_toggle_thumb: global.pref.focusmode ? ui_textcolor : undefined,
+				text_hint_alpha: global.pref.focusmode ? 1 : 0.5,
+				sound_click: snd_select, sound_hover: global.pref.focusmode ? undefined : snd_sel_switch,
+			}) //Main Style
 				.setRenderRegionOffset([10, 10, 10, 10])
 				.setFonts(fnt_speech, fnt_determination, fnt_determination)
 				.setColors(global.pref.focusmode ? ui_surfacecolor : c_white, global.pref.focusmode ? ui_surface_high : ui_accentcolor, global.pref.focusmode ? ui_bgcolor : #f43e83, global.pref.focusmode ? ui_accentcolor : #15ee97, global.pref.focusmode ? ui_bordercolor : c_gray)
-				.setSprites(spr_pixel, spr_pixel).setSpriteCheckbox(spr_pixel, spr_pixel).setSpriteComboBoxArrow(spr_soul_tiny)
+				.setSprites(global.pref.focusmode ? spr_pixel : spr_border_undertale_outlined, global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined)
+				.setSpriteCheckbox(global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined, spr_pixel)
+				.setSpriteToggleSwitch(global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined, global.pref.focusmode ? spr_border_header : spr_border_undertale_outlined)
+				.setSpriteComboBoxArrow(spr_soul_tiny)
 			soupy_lui = new LuiMain().setStyle(soupy_style);
-			soupy_lui.displayFocusedElement(true);
+			soupy_lui.displayFocusedElement(false);
 			soupy_lui.setTooltipDelay(global.pref.focusmode ? 600 : 0);
 			soupy_style.color_text_hint = global.pref.focusmode ? ui_mutedcolor : c_gray;
 		#endregion
@@ -205,7 +245,7 @@ function ui_init() {
 						}).addEvent(LUI_EV_CLICK, function(e_) { soup_store("triggered"); }),
 					]),
 				]);
-				var panel_header_ = new LuiButton(panel_base_).setText("Current Face Settings").setTooltip("These settings affect the portrait on the current page.", true, , true).setData("header", panel_).setIcon(spr_gui_icons,,, ui_mutedcolor,, 1).addEvent(LUI_EV_CLICK, function(e_) { var header = e_.getData("header"); header.toggleVisible(); }); soupy_panel_portrait.addContent([panel_header_, panel_, ]); //End container
+				var panel_header_ = new LuiButton(panel_base_).setText("Current Face Settings -").setTooltip("These settings affect the portrait on the current page.", true, , true).setData("header", panel_).setIcon(spr_gui_icons,,, ui_mutedcolor,, 1).addEvent(LUI_EV_CLICK, function(e_) { var header = e_.getData("header"); header.toggleVisible(); e_.setText(header.visible ? "Current Face Settings -" : "Current Face Settings +"); }); soupy_panel_portrait.addContent([panel_header_, panel_, ]); //End container
 				
 				var panel_ = new LuiContainer().setPadding(0).addContent([
 					new LuiRow().setFlexGrow(1).centerContent().addContent([ //Sprite image index
@@ -272,7 +312,7 @@ function ui_init() {
 						new LuiInput({ value: dial_nametag, height: 40, placeholder: "Toriel, Susie, etc.(accepts effect & color commands)", offset: 12, type_sfx: snd_txttype, color_normal: c_white, color_hover: c_gray, }).bindVariable(self, "dial_nametag")
 					]),
 				]);
-				var panel_header_ = new LuiButton(panel_base_).setText("Global Face Settings").setTooltip("These settings affect all dialogue portraits.", true, , true).setData("header", panel_).setIcon(spr_gui_icons,,, ui_mutedcolor,, 5).addEvent(LUI_EV_CLICK, function(e_) { var header = e_.getData("header"); header.toggleVisible(); }); if ( global.pref.focusmode ) { panel_.hide(); } soupy_panel_portrait.addContent([panel_header_, panel_, ]); //End container
+				var panel_header_ = new LuiButton(panel_base_).setText(global.pref.focusmode ? "Global Face Settings +" : "Global Face Settings -").setTooltip("These settings affect all dialogue portraits.", true, , true).setData("header", panel_).setIcon(spr_gui_icons,,, ui_mutedcolor,, 5).addEvent(LUI_EV_CLICK, function(e_) { var header = e_.getData("header"); header.toggleVisible(); e_.setText(header.visible ? "Global Face Settings -" : "Global Face Settings +"); }); if ( global.pref.focusmode ) { panel_.hide(); } soupy_panel_portrait.addContent([panel_header_, panel_, ]); //End container
 		
 			soupy_lui.addContent(soupy_panel_portrait); //Add everything to the main ui
 		#endregion
@@ -677,10 +717,9 @@ function ui_init() {
 						SYSTEMUI.ui_apply_theme(); SYSTEMUI.save_pref();
 					}),
 				]),
-				new LuiButton({ text: "Open Export", height: 40, color: ui_accentcolor, text_color: ui_bgcolor, }).addEvent(LUI_EV_CREATE, function(e_) { soup_store("settings_open_export", e_, , true); }).addEvent(LUI_EV_CLICK, function() { soup_store("androidexport", , , true); }),
-				new LuiText({ value: "Export: Esc / F1 / End     Format: Ctrl+M", color: ui_mutedcolor, auto_width: false, auto_height: false, text_halign: fa_center, text_valign: fa_middle, font: fnt_speech, }).setPadding(4),
+				new LuiText({ value: "Export: top-right / Esc / F1 / End     Format: Ctrl+M", color: ui_mutedcolor, auto_width: false, auto_height: false, text_halign: fa_center, text_valign: fa_middle, font: fnt_speech, }).setPadding(6),
 			
-				new LuiButton({ text: "Export and reference settings", height: 36, }).addEvent(LUI_EV_CLICK, function() { var panel_ = soup_checkout("settings_export", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); } }),
+				new LuiButton({ text: global.pref.focusmode ? "Export and reference settings +" : "Export and reference settings -", height: 36, }).addEvent(LUI_EV_CLICK, function(e_) { var panel_ = soup_checkout("settings_export", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); e_.setText(panel_.visible ? "Export and reference settings -" : "Export and reference settings +"); } }),
 				new LuiContainer().setPadding(0).addContent([
 				new LuiHorizontalRule({ height: 2, }),
 				new LuiRow().setFlexGrow(1).centerContent().addContent([ //Choosing a color
@@ -712,7 +751,7 @@ function ui_init() {
 				new LuiButton({ text: "View Reference Image", height: 40, }).addEvent(LUI_EV_CLICK, function () { SYSTEMUI.ui_viewref(); }),
 				]).addEvent(LUI_EV_CREATE, function(e_) { soup_store("settings_export", e_, , true); if ( global.pref.focusmode ) { e_.hide(); } }),
 			
-				new LuiButton({ text: "Editor and export behavior", height: 36, }).addEvent(LUI_EV_CLICK, function() { var panel_ = soup_checkout("settings_behavior", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); } }),
+				new LuiButton({ text: global.pref.focusmode ? "Editor and export behavior +" : "Editor and export behavior -", height: 36, }).addEvent(LUI_EV_CLICK, function(e_) { var panel_ = soup_checkout("settings_behavior", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); e_.setText(panel_.visible ? "Editor and export behavior -" : "Editor and export behavior +"); } }),
 				new LuiContainer().setPadding(0).addContent([
 				new LuiHorizontalRule({ height: 2, }),
 				new LuiRow().setFlexGrow(1).centerContent().addContent([ //Sprite image scale
@@ -748,7 +787,7 @@ function ui_init() {
 				]),
 				]).addEvent(LUI_EV_CREATE, function(e_) { soup_store("settings_behavior", e_, , true); if ( global.pref.focusmode ) { e_.hide(); } }),
 			
-				new LuiButton({ text: "Appearance and editor font", height: 36, }).addEvent(LUI_EV_CLICK, function() { var panel_ = soup_checkout("settings_appearance", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); } }),
+				new LuiButton({ text: global.pref.focusmode ? "Appearance and editor font +" : "Appearance and editor font -", height: 36, }).addEvent(LUI_EV_CLICK, function(e_) { var panel_ = soup_checkout("settings_appearance", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); e_.setText(panel_.visible ? "Appearance and editor font -" : "Appearance and editor font +"); } }),
 				new LuiContainer().setPadding(0).addContent([
 				new LuiRow().setFlexGrow(1).centerContent().addContent([ //Choosing a color
 					new LuiText({ value: "UI Color:", width: 130, text_halign: fa_center, text_valign: fa_middle, font: fnt_speech, }).setTooltip("Choose the editor accent color."),
@@ -808,7 +847,7 @@ function ui_init() {
 				]),
 				]).addEvent(LUI_EV_CREATE, function(e_) { soup_store("settings_appearance", e_, , true); if ( global.pref.focusmode ) { e_.hide(); } }),
 			
-				new LuiButton({ text: "Tools and help", height: 36, }).addEvent(LUI_EV_CLICK, function() { var panel_ = soup_checkout("settings_tools", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); } }),
+				new LuiButton({ text: global.pref.focusmode ? "Tools and help +" : "Tools and help -", height: 36, }).addEvent(LUI_EV_CLICK, function(e_) { var panel_ = soup_checkout("settings_tools", false, true); if ( !is_undefined(panel_) ) { panel_.toggleVisible(); e_.setText(panel_.visible ? "Tools and help -" : "Tools and help +"); } }),
 				new LuiContainer().setPadding(0).addContent([
 				new LuiHorizontalRule({ height: 2, }),
 				new LuiButton({ text: "Text Macros", height: 40, }).addEvent(LUI_EV_CLICK, soupy_ui_textmacros),

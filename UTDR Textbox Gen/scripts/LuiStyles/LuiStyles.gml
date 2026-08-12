@@ -53,6 +53,13 @@ function LuiStyle(_style = {}) constructor {
     color_accent = _style[$ "color_accent"] ?? #45C952;
     color_border = _style[$ "color_border"] ?? c_gray;
     color_back = _style[$ "color_back"] ?? c_ltgray;
+	// Optional component colors. Undefined preserves the component's legacy overrides.
+	color_input = _style[$ "color_input"] ?? undefined;
+	color_input_hover = _style[$ "color_input_hover"] ?? undefined;
+	color_toggle_track = _style[$ "color_toggle_track"] ?? undefined;
+	color_toggle_track_active = _style[$ "color_toggle_track_active"] ?? undefined;
+	color_toggle_thumb = _style[$ "color_toggle_thumb"] ?? undefined;
+	text_hint_alpha = _style[$ "text_hint_alpha"] ?? 0.5;
     color_deactivated = _style[$ "color_deactivated"] ?? c_gray;
     color_text = _style[$ "color_text"] ?? c_black;
 	color_text_hint = _style[$ "color_text_hint"] ?? c_gray;

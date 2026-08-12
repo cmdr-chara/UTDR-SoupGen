@@ -7,10 +7,11 @@ This fork tracks [SoupTaels/UTDR-SoupGen](https://github.com/SoupTaels/UTDR-Soup
 - Reworked the editor around a calm, low-motion interface that is enabled by default, with a fixed dark plum palette and one configurable accent color.
 - Replaced the animated, high-saturation top controls with stable Write, Text, Portrait, Border, Settings, and Export actions that remain consistent across desktop, Android, and web builds.
 - Moved the full color and effect toolbars behind an optional Format control while preserving every existing formatting command and adding the `Ctrl+M` keyboard shortcut.
-- Grouped advanced Settings into collapsible sections and kept Export directly available from both the top bar and Settings.
+- Grouped advanced Settings into clearly labelled collapsible sections while keeping one primary Export action in the top bar.
 - Reduced decorative particles, moving backgrounds, oscillating controls, hover audio, animated status copy, and oversized onboarding text in Calm mode.
-- Added delayed tooltips, a visible accent-colored focus indicator, clearer action labels, and editor-only placeholder guards so UI guidance cannot leak into exports.
-- Extended the static validator with regression checks for calm defaults, formatting access, Settings storage, motion gates, accent updates, and export-safe placeholders.
+- Added delayed tooltips, clearer action labels, and editor-only placeholder guards so UI guidance cannot leak into exports.
+- Corrected the initial Calm UI regressions: dark inputs remain legible, toggles and scrollbars retain their shape, old random-theme preferences migrate safely, formatting clicks are consumed once, and collapsed panels no longer show inert scroll tracks.
+- Extended the static validator with regression checks for calm defaults, control contrast, formatting access, Settings storage, motion gates, accent updates, and export-safe placeholders.
 
 ## 1.6.9
 

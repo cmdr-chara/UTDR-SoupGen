@@ -3,6 +3,7 @@
 android_path = ""; //Safe path to save stuff in
 if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 #region Loading Preferences
+	ui_save_calm_migration = false;
 	ui_loadprefs = function () { 
 			var data_ = soupy_store_payload(PREF_SOUP, PREF_SOUP_BAK, "preferences", "soupy_preferences.soupy");
 			if ( !is_undefined(data_) ) {
@@ -10,9 +11,10 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 			try { pref_ = json_parse(data_); } catch(err_) { show_debug_message(err_.message); }
 	
 			if ( is_struct(pref_) ) {
+				var calm_migration_ = is_undefined(pref_[$ "focusmode"]);
 				var get_ = pref_[$ "firsttime"]; global.pref.firsttime = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "killaudio"]; global.pref.killaudio = !is_undefined(get_) ? get_ : false;
-				var get_ = pref_[$ "randomclr"]; global.pref.randomclr = !is_undefined(get_) ? get_ : false;
+				var get_ = pref_[$ "randomclr"]; global.pref.randomclr = calm_migration_ ? false : (!is_undefined(get_) ? get_ : false);
 				var get_ = pref_[$ "sizematters"]; global.pref.sizematters = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "sizematterstop"]; global.pref.sizematterstop = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "anyborder"]; global.pref.anyborder = !is_undefined(get_) ? get_ : false;
@@ -20,8 +22,8 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 				var get_ = pref_[$ "checkupdates"]; global.pref.checkupdates = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "showref"]; global.pref.showref = !is_undefined(get_) ? get_ : true;
 				var get_ = pref_[$ "openresult"]; global.pref.openresult = !is_undefined(get_) ? get_ : true;
-				var get_ = pref_[$ "focusmode"]; global.pref.focusmode = !is_undefined(get_) ? get_ : true;
-				var get_ = pref_[$ "bg3d"]; global.pref.bg3d = !is_undefined(get_) ? get_ : false;
+				var get_ = pref_[$ "focusmode"]; global.pref.focusmode = calm_migration_ ? true : (!is_undefined(get_) ? get_ : true);
+				var get_ = pref_[$ "bg3d"]; global.pref.bg3d = calm_migration_ ? false : (!is_undefined(get_) ? get_ : false);
 				var get_ = pref_[$ "showfps"]; global.pref.showfps = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "fix"]; global.pref.fix = !is_undefined(get_) ? get_ : false;
 				var get_ = pref_[$ "confirmexport"]; global.pref.confirmexport = !is_undefined(get_) ? get_ : true;
@@ -32,9 +34,13 @@ if ( !is_android() ) { instance_create_depth(0, 0, -2, obj_windows_icon); }
 				var get_ = pref_[$ "gifbgclr"]; global.pref.gifbgclr = !is_undefined(get_) ? get_ : c_lime; if ( global.pref.gifbgclr == c_fuchsia && !global.pref.fix ) { global.pref.gifbgclr = c_lime; global.pref.fix = true; } screenshot_back = global.pref.gifbgclr;
 				var get_ = pref_[$ "autopoint"]; global.pref.autopoint = !is_undefined(get_) ? get_ : true; dial_point_auto = global.pref.autopoint;
 				var get_ = pref_[$ "macros"]; global.pref.macros = !is_undefined(get_) ? get_ : { example: "[c_go][wave][pulse]I'm so soupy!![/]", example2: "This is a really long macrooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo", }; 
-				var get_ = pref_[$ "themeclr"]; global.pref.themeclr = !is_undefined(get_) ? get_ : make_color_rgb(200, 169, 107);
+				var get_ = pref_[$ "themeclr"]; global.pref.themeclr = calm_migration_ ? make_color_rgb(182, 154, 196) : (!is_undefined(get_) ? get_ : make_color_rgb(182, 154, 196));
 				if ( variable_instance_exists(id, "ui_apply_theme") ) { ui_apply_theme(global.pref.randomclr); }
 				var gif_swatch_ = soup_checkout("datagifcolor", false, true); if ( !is_undefined(gif_swatch_) ) { gif_swatch_.setColor(screenshot_back); }
+				if ( calm_migration_ ) {
+					if ( variable_instance_exists(id, "save_pref") ) { save_pref(); }
+					else { ui_save_calm_migration = true; }
+				}
 			}
 		}
 	}
@@ -513,6 +519,7 @@ ui_init();
 			show_debug_message("SoupGen could not verify the preferences journal write.");
 		}
 	}
+	if ( ui_save_calm_migration ) { ui_save_calm_migration = false; save_pref(); }
 	
 	save_preset = function (label_ = "") {
 		global.pref.presets[$ label_] = {

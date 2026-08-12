@@ -61,7 +61,7 @@ function LuiScrollPanel(_params = {}) : LuiBase(_params) constructor {
 			draw_sprite_stretched_ext(self.style.sprite_panel, 0, self.x, self.y, self.width, self.height, _blend_color, 1);
 		}
 		//Scroll slider
-		if ( array_length(self.getContainer().content) > 0 ) {
+		if ( array_length(self.getContainer().content) > 0 && self.scroll_container.height > self.height ) {
 			var _scroll_slider_x = self.x + self.width - ( self.scroll_slider_width ?? ( self.scroll_slider_width ?? self.style.scroll_slider_width ) ) - self.scroll_pin_edge_offset;
 			var _scroll_pin_y_offset = Range(self.scroll_offset_y, 0, -(self.scroll_container.height - self.height), self.scroll_pin_edge_offset, self.height - ( self.scroll_slider_width ?? self.style.scroll_slider_width ) - self.scroll_pin_edge_offset);
 			_scroll_pin_y_offset = max(_scroll_pin_y_offset, self.scroll_pin_edge_offset);
@@ -85,6 +85,19 @@ function LuiScrollPanel(_params = {}) : LuiBase(_params) constructor {
 	}
 	
 	self.step = function() {
+		self._initScrollContainer();
+		var _overflow = max(0, self.scroll_container.height - self.height);
+		if ( _overflow <= 0 ) {
+			self.drag_start_y = -1;
+			self.drag_y = -1;
+			if ( self.scroll_target_offset_y != 0 || self.scroll_offset_y != 0 ) {
+				self.scroll_target_offset_y = 0;
+				self.scroll_offset_y = 0;
+				self._applyScroll();
+			}
+			return;
+		}
+
 		// Mouse wheel input
 		if self.isMouseHoveredExc() && self.isMouseHoveredChilds() {
 			var _wheel_up = mouse_wheel_up() ? 1 : 0;
@@ -112,7 +125,7 @@ function LuiScrollPanel(_params = {}) : LuiBase(_params) constructor {
 		}
 		
 		// Scrolling
-		self.scroll_target_offset_y = clamp(self.scroll_target_offset_y, -(self.scroll_container.height - self.height), 0);
+		self.scroll_target_offset_y = clamp(self.scroll_target_offset_y, -_overflow, 0);
 		self.scroll_offset_y = SmoothApproachDelta(self.scroll_offset_y, self.scroll_target_offset_y, self.scroll_smoothness, 0.1);
 		if ( self.scroll_offset_y != self.scroll_target_offset_y ) { self._applyScroll(); }
 	}
@@ -133,6 +146,7 @@ function LuiScrollPanel(_params = {}) : LuiBase(_params) constructor {
 	});
 	
 	self.addEvent(LUI_EV_CLICK_R, function(_element) {
+		if ( _element.scroll_container.height <= _element.height ) { exit; }
 		var btm = -(_element.scroll_container.height - _element.height);
 		_element.scroll_target_offset_y = _element.scroll_target_offset_y <= btm/2 ? 0 : btm;
 		sfx_play(_element.sound_right, , _element.sound_right_g, _element.sound_right_p)
