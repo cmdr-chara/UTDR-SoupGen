@@ -15,6 +15,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: build-windows-${{ github.ref }}
@@ -79,6 +82,12 @@ jobs:
           yyc: "false"
           save-logs: "true"
           name: UTDR-SoupGen-Enhanced-Windows.zip
+
+      - name: Attest Windows package
+        if: success()
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ steps.build.outputs['out-dir'] }}/${{ steps.build.outputs['out-name'] }}
 
       - name: Upload Windows build
         if: success()
