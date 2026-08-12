@@ -42,23 +42,33 @@ function scribble_alignment(halign_ = 0, valign_ = 0) {
 	function nav_idle_() {
 		yoff = 0; text = text_static;
 		if ( self[$ "is_action"] ?? false ) {
-			color_butt = SYSTEMUI.ui_accentcolor;
-			color_butt_hover = merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
-			color = SYSTEMUI.ui_bgcolor;
+			padd_multi = global.pref.focusmode ? 5 : 8; leeway = global.pref.focusmode ? 8 : 5;
+			color_butt = global.pref.focusmode ? SYSTEMUI.ui_surfacecolor : SYSTEMUI.ui_accentcolor;
+			color_butt_hover = global.pref.focusmode ? SYSTEMUI.ui_surface_high : merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
+			color = global.pref.focusmode ? SYSTEMUI.ui_accentcolor : SYSTEMUI.ui_bgcolor;
 		}
-		else { color_butt = SYSTEMUI.ui_surface_high; color_butt_hover = SYSTEMUI.ui_bordercolor; color = SYSTEMUI.ui_mutedcolor; }
+		else {
+			padd_multi = 8; leeway = 5;
+			color_butt = global.pref.focusmode ? SYSTEMUI.ui_surfacecolor : SYSTEMUI.ui_surface_high;
+			color_butt_hover = global.pref.focusmode ? SYSTEMUI.ui_surface_high : SYSTEMUI.ui_bordercolor;
+			color = SYSTEMUI.ui_mutedcolor;
+		}
 	}
 	function nav_active_() {
 		yoff = 0; text = text_static;
-		color_butt = SYSTEMUI.ui_bordercolor; color_butt_hover = merge_color(SYSTEMUI.ui_bordercolor, SYSTEMUI.ui_textcolor, 0.12); color = SYSTEMUI.ui_textcolor;
+		padd_multi = 8; leeway = 5;
+		color_butt = global.pref.focusmode ? SYSTEMUI.ui_surfacecolor : SYSTEMUI.ui_accentcolor;
+		color_butt_hover = global.pref.focusmode ? SYSTEMUI.ui_surface_high : SYSTEMUI.ui_accentcolor;
+		color = global.pref.focusmode ? SYSTEMUI.ui_textcolor : SYSTEMUI.ui_bgcolor;
 	}
 	function on_enter_() {
 		if ( SYSTEMUI.ui_tab != id_ ) {
-			color_butt = SYSTEMUI.ui_bordercolor; color = SYSTEMUI.ui_textcolor;
+			color_butt = global.pref.focusmode ? SYSTEMUI.ui_surface_high : SYSTEMUI.ui_bordercolor; color = SYSTEMUI.ui_textcolor;
 		}
 	}
 	function on_enter_a() {
-		color_butt = merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
+		color_butt = global.pref.focusmode ? SYSTEMUI.ui_surface_high : merge_color(SYSTEMUI.ui_accentcolor, c_white, 0.15);
+		color = global.pref.focusmode ? SYSTEMUI.ui_textcolor : SYSTEMUI.ui_bgcolor;
 	}
 	function on_leave_() { if ( ( self[$ "is_action"] ?? false ) || SYSTEMUI.ui_tab != id_ ) { nav_idle_(); } else { nav_active_(); } window_set_cursor(cr_default); }
 	function on_click_() { if ( SYSTEMUI.ui_tab != id_ ) { if ( !global.pref.focusmode ) { sfx_play(snd_select); } SYSTEMUI.ui_tab = id_; on_reset_(); } else if ( !global.pref.focusmode ) { sfx_play(snd_bump, , , random_range(0.8, 1.2)); } }

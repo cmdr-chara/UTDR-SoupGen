@@ -83,22 +83,27 @@ function ui_init() {
 			}
 
 			var swatch_ = soup_checkout("datamainuicolor", false, true); if ( !is_undefined(swatch_) ) { swatch_.setColor(ui_accentcolor); }
+			if ( variable_instance_exists(id, "butt") ) {
+				var nav_x_ = global.pref.focusmode ? [46, 105, 174, 251, 328, 590] : [44, 110, 194, 291, 395, 570];
+				for ( var nav_i_ = 0; nav_i_ < min(array_length(butt), array_length(nav_x_)); nav_i_++ ) { butt[nav_i_].data.x = nav_x_[nav_i_]; }
+			}
 			if ( variable_instance_exists(id, "butt") && variable_instance_exists(id, "soupy_panel_extra") ) { on_reset_(false); }
 		}
 	
 		#region Main Menu Buttons
-			var i = 0, spr_ = spr_pixel, y_ = 20, clr_ = ui_surface_high, padd_ = 8;
-			butt[i] = new Button({ id_: i, text: "Write", x: 44, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			var i = 0, spr_ = spr_pixel, y_ = 20, clr_ = global.pref.focusmode ? ui_surfacecolor : ui_surface_high, padd_ = 8;
+			var nav_x_ = global.pref.focusmode ? [46, 105, 174, 251, 328, 590] : [44, 110, 194, 291, 395, 570];
+			butt[i] = new Button({ id_: i, text: "Write", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: i, text: "Text", x: 110, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: i, text: "Text", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: i, text: "Portrait", x: 194, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: i, text: "Portrait", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: i, text: "Border", x: 291, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: i, text: "Border", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: i, text: "Settings", x: 395, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: i, text: "Settings", x: nav_x_[i], y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: clr_, color_butt_hover: ui_bordercolor, color: ui_mutedcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = method(self, on_click_); }
-			butt[i] = new Button({ id_: -1, is_action: true, text: "Export", x: 570, y: y_, yoff: 0, padd_multi: padd_, sprite: spr_, color_butt: ui_accentcolor, color_butt_hover: merge_color(ui_accentcolor, c_white, 0.15), color: ui_bgcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
+			butt[i] = new Button({ id_: -1, is_action: true, text: "Export", x: nav_x_[i], y: y_, yoff: 0, padd_multi: global.pref.focusmode ? 5 : 8, leeway: global.pref.focusmode ? 8 : 5, sprite: spr_, color_butt: global.pref.focusmode ? ui_surfacecolor : ui_accentcolor, color_butt_hover: global.pref.focusmode ? ui_surface_high : merge_color(ui_accentcolor, c_white, 0.15), color: global.pref.focusmode ? ui_accentcolor : ui_bgcolor, on_hover: -1, on_enter: -1, on_leave: -1, on_click: -1, centered: true, });
 			with ( butt[i++].data ) { self[$ "on_hover"] = method(self, on_hover_); self[$ "on_enter"] = method(self, on_enter_a); self[$ "on_leave"] = method(self, on_leave_); self[$ "on_click"] = function () { soup_store("androidexport", , , true); } }
 			call_later(1, time_source_units_frames, on_reset_); //Reset all buttons on start
 			call_later(1, time_source_units_frames, function() { if ( !is_android() ) { window_progress(window_progress_none); } });

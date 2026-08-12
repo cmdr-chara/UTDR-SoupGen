@@ -19,7 +19,7 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 			var content_height_ = ( ui_tab == 0 && bord_visible ) ? 254 : 422;
 			draw_sprite_stretched_ext(spr_pixel, 0, 0, 0, 640, 480, ui_bgcolor, 1);
 			draw_sprite_stretched_ext(spr_pixel, 0, 0, 0, 640, 44, ui_surfacecolor, 1);
-			draw_sprite_stretched_ext(spr_pixel, 0, 0, 43, 640, 1, ui_bordercolor, 1);
+			draw_sprite_stretched_ext(spr_pixel, 0, 0, 43, 640, 1, merge_color(ui_surfacecolor, ui_bordercolor, 0.5), 1);
 			draw_sprite_stretched_ext(spr_pixel, 0, 10, 48, 620, content_height_, ui_surfacecolor, 1);
 			draw_sprite_stretched_ext(spr_pixel, 0, 10, 48, 620, 1, ui_bordercolor, 1);
 		}
@@ -53,6 +53,11 @@ if ( dial_text_page > dial_text_page_c - 1 && dial_text_page_c > 1 && screenshot
 					butt[i].data.x = calc_x[i]; butt[i].data.centered = true; 
 				 }
 			i++; }
+			if ( global.pref.focusmode && ui_tab >= 0 && ui_tab < 5 && ui_tab < count_ && !is_undefined(butt[ui_tab].button) ) {
+				//One quiet active indicator. Export stays a text action, never a second filled CTA.
+				var active_nav_ = butt[ui_tab], active_box_ = active_nav_.button.get_bbox(active_nav_.data.x, active_nav_.data.y), active_pad_ = active_nav_.data[$ "padd_multi"] ?? 5;
+				draw_sprite_stretched_ext(spr_pixel, 0, active_box_.left + active_pad_, 40, max(16, active_box_.width - active_pad_ * 2), 2, ui_accentcolor, 1);
+			}
 		#endregion
 		
 		if ( ui_tab == 0 ) { 
