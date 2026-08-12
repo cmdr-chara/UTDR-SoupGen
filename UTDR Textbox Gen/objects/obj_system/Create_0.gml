@@ -558,7 +558,7 @@ ui_init();
 		];
 		if ( is_android() ) { array_insert(welcome_items_, 4, new LuiText({ value: "Continue to choose an export folder.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, })); }
 		else if ( is_wasm() ) { array_insert(welcome_items_, 4, new LuiText({ value: "Web builds have additional import and export limits.", font: fnt_speech, color: SYSTEMUI.ui_mutedcolor, })); }
-		var id_ = soupy_popup(welcome_items_, finish_welcome_, "Continue", 420, 170, 6, snd_dimbox, fnt_speech, , 6, 32);
+		var id_ = soupy_popup(welcome_items_, finish_welcome_, "Continue", 420, 200, 6, snd_dimbox, fnt_speech, , 6, 32);
 		soup_store("firsttime", id_, , true);
 	}
 #endregion
