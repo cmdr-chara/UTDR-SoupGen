@@ -16,6 +16,10 @@ function LuiImageButton(_params = {}) : LuiImage(_params) constructor {
 	self.xscale = _params[$ "xscale"] ?? 1;
 	self.yscale = _params[$ "yscale"] ?? 1;
 	self.color_default = self.color_blend;
+	self.show_frame = _params[$ "show_frame"] ?? false;
+	self.frame_sprite = _params[$ "frame_sprite"] ?? undefined;
+	self.frame_color = _params[$ "frame_color"] ?? undefined;
+	self.frame_inset = max(0, _params[$ "frame_inset"] ?? 4);
 	self.bounce = false;
 	self.anim_track = false; self.blink = -1;
 	self.step = function () { 
@@ -33,10 +37,11 @@ function LuiImageButton(_params = {}) : LuiImage(_params) constructor {
 	}
 	self.draw = function() {
 		//Calculate fit size
-		var _width = self.width;
-		var _height = self.height;
+		var _inset = self.show_frame ? self.frame_inset : 0;
+		var _width = max(1, self.width - _inset * 2);
+		var _height = max(1, self.height - _inset * 2);
 		if self.maintain_aspect {
-			if _width / self.aspect <= self.height  {
+			if _width / self.aspect <= _height  {
 				_height = _width / self.aspect;
 			} else {
 				_width = _height * self.aspect;
@@ -53,6 +58,16 @@ function LuiImageButton(_params = {}) : LuiImage(_params) constructor {
 			}
 		} else {
 			_blend_color = merge_color(_blend_color, c_black, 0.5);
+		}
+		//Optional frame for asset selectors. It is deliberately local so image-only
+		//buttons elsewhere keep their original appearance.
+		if self.show_frame {
+			var _frame_sprite = self.frame_sprite ?? self.style.sprite_button;
+			var _frame_color = self.frame_color ?? self.style.color_secondary;
+			if self.isMouseHovered() { _frame_color = merge_color(_frame_color, self.style.color_hover, 0.5); }
+			if !is_undefined(_frame_sprite) {
+				draw_sprite_stretched_ext(_frame_sprite, 0, self.x, self.y, self.width, self.height, _frame_color, 1);
+			}
 		}
 		//Draw sprite button
 		if ( !is_undefined(self.value) && self.value != -1 && self.value != "" && sprite_exists(self.value) ) {

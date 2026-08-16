@@ -2,6 +2,19 @@
 
 This fork tracks [SoupTaels/UTDR-SoupGen](https://github.com/SoupTaels/UTDR-SoupGen) and preserves the original MIT license and credits. The first enhanced release is based on upstream commit `b395269e494a7c8c8d174a93982e878fd4b70738`.
 
+## 1.7.0
+
+- Reworked the editor around a calm, low-motion interface that is enabled by default, with a fixed dark plum palette and one configurable accent color.
+- Replaced the animated, high-saturation top controls with stable Write, Text, Portrait, Border, Settings, and Export actions that remain consistent across desktop, Android, and web builds.
+- Moved the full color and effect toolbars behind an optional Format control while preserving every existing formatting command and adding the `Ctrl+M` keyboard shortcut.
+- Grouped advanced Settings into clearly labelled collapsible sections while keeping one primary Export action in the top bar.
+- Reduced decorative particles, moving backgrounds, oscillating controls, hover audio, animated status copy, and oversized onboarding text in Calm mode.
+- Added delayed tooltips, clearer action labels, and editor-only placeholder guards so UI guidance cannot leak into exports.
+- Corrected the initial Calm UI regressions: dark inputs remain legible, toggles and scrollbars retain their shape, old random-theme preferences migrate safely, formatting clicks are consumed once, and collapsed panels no longer show inert scroll tracks.
+- Refined the top navigation into a compact rail with neutral tabs, a single active underline, and a restrained right-aligned Export action.
+- Polished the Calm form states with flat inputs, inset toggle thumbs, proportional high-contrast scrollbars, a dismissible first-run guide prompt, and a readable empty portrait preview.
+- Extended the static validator with regression checks for calm defaults, control contrast, formatting access, Settings storage, motion gates, accent updates, and export-safe placeholders.
+
 ## 1.6.9
 
 - Replaced single-file recovery and preferences writes with two checksummed, generation-tagged journal slots in GameMaker's save area. The newest valid slot wins and older desktop or Android files are migrated without overwriting the only legacy copy.

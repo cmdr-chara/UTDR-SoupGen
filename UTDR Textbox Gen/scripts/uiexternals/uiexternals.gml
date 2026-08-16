@@ -10,12 +10,13 @@ pref = {
 	checkupdates: true, //Check for updates?
 	showref: true, //Whether to show the reference image on export
 	openresult: true, //Whether to show your generated result
-	randomclr: true, //Whether the UI should randomize its color on startup
-	bg3d: is_android() ? false : true, //Whether to enable the 3D background
+	focusmode: true, //Use the calm, low-motion editor interface
+	randomclr: false, //Whether the UI should randomize its color on startup
+	bg3d: false, //Whether to enable the 3D background
 	showfps: false, //Whether to show an FPS counter
 	confirmexport: true, //Whether to press confirm to export once dialogue is finished
 	autopoint: true, //Whether auto-asterisk is enabled
-	themeclr: c_orange, //UI theme color
+	themeclr: make_color_rgb(182, 154, 196), //UI theme color
 	gifbgclr: c_lime, //GIF BG color
 	soupyicon: true, //Whether to enable dynamic icon changing
 	pausesymbols: true, //Whether to always delay when encountering symbols
@@ -1105,11 +1106,17 @@ pref = {
 	function external_choose_border() {
 		#region Add All Borders
 			var options_ = [], bords_ = tag_get_assets("borders"), bords_len = array_length(bords_), bords_i = 0;
-			repeat ( bords_len ) {
-				var cur_ = bords_[bords_i], myspr = get_border(asset_get_index(cur_)), myname = get_border(asset_get_index(cur_), "name");
-				array_push(options_, 
-					new LuiImageButton({ value: myspr, maintain_aspect: false, id_: string_letters(myname) != "" ? myname : sprite_get_name(myname), isnew: false }).setSize(70, 70).setFlexAlignSelf(flexpanel_align.center)
-					.addEvent(LUI_EV_MOUSE_ENTER, function(e_) { if ( sprite_get_number(e_.get()) > 1 ) { e_.imgspd = 0.15; } }).addEvent(LUI_EV_MOUSE_LEAVE, function(e_) { e_.imgspd = 0; e_.subimg = 0; })
+				repeat ( bords_len ) {
+					var cur_ = bords_[bords_i], myspr = get_border(asset_get_index(cur_)), myname = get_border(asset_get_index(cur_), "name");
+					array_push(options_,
+						new LuiImageButton({ value: myspr, maintain_aspect: false, id_: string_letters(myname) != "" ? myname : sprite_get_name(myname), isnew: false,
+							show_frame: true, frame_sprite: spr_border_header, frame_color: SYSTEMUI.ui_surface_high, frame_inset: 5, }).setSize(82, 82).setFlexAlignSelf(flexpanel_align.center)
+						.addEvent(LUI_EV_MOUSE_ENTER, function(e_) {
+							if ( sprite_get_number(e_.get()) > 1 ) { e_.imgspd = 0.15; }
+							var preview_ = soup_checkout("border_choice_preview", false), details_ = soup_checkout("border_choice_details", false);
+							if ( !is_undefined(preview_) ) { preview_.setSprite(e_.get()); }
+							if ( !is_undefined(details_) ) { details_.setText($"{e_.params.id_}\n\nClick to use this border."); }
+						}).addEvent(LUI_EV_MOUSE_LEAVE, function(e_) { e_.imgspd = 0; e_.subimg = 0; })
 					.addEvent(LUI_EV_CREATE, function(e_) { 
 						var myname = e_.params.id_, result = get_border(myname, "NEW SPRITE"), text_ = $"[border,{myname}]";
 						if ( asset_get_index(result) == -1 ) { e_.params.isnew = ( result != undefined && result ) ? true : false; if ( e_.params.isnew ) { text_ = $"[border,{myname}] (NEW!)"; } }
@@ -1180,15 +1187,21 @@ pref = {
 			); }
 		#endregion
 		
+		var current_border_name_ = sprite_exists(SYSTEMUI.spr_bord) ? sprite_get_name(SYSTEMUI.spr_bord) : "Current border";
 		var dataarr = [
-			new LuiRow().setFlexGrow(1).centerContent().addContent([
-				new LuiScrollPanel({ height: 400, scroll_pin_edge_offset:10, sprite_panel: false, sound_right: snd_throw, }).addContent(options_),
-				new LuiText({ value: $"Select a dialogue border!\nThis is the box displayed\naround your text.\nSome are animated!\nScroll to find your perfect\nsprite for your dialogue!", auto_width: false, auto_height: false, font: fnt_speech, text_halign: fa_center, text_valign: fa_center, }).addEvent(LUI_EV_CREATE, function(element_) { soup_store("scrollsub", element_); }),
-			]).addEvent(LUI_EV_CREATE, function(element_) { soup_store("scrollmain", element_); }), //Stash panel so we can add another panel to this row
+			new LuiText({ value: "Choose a dialogue border", height: 28, auto_width: false, auto_height: false, font: fnt_determination, text_halign: fa_center, text_valign: fa_middle, }),
+			new LuiRow({ height: 330, }).setFlexGrow(1).setGap(10).addContent([
+				new LuiScrollPanel({ width: 260, height: 330, scroll_pin_edge_offset: 8, sprite_panel: true, sound_right: snd_throw, }).addContent(options_),
+				new LuiPanel({ width: 280, height: 330, }).setPadding(12).setGap(10).centerContent().addContent([
+					new LuiText({ value: "Preview", height: 24, auto_width: false, auto_height: false, font: fnt_determination, color: SYSTEMUI.ui_mutedcolor, text_halign: fa_center, text_valign: fa_middle, }),
+					new LuiImage({ value: SYSTEMUI.spr_bord, maintain_aspect: true, }).setSize(220, 150).addEvent(LUI_EV_CREATE, function(e_) { soup_store("border_choice_preview", e_); }),
+					new LuiText({ value: $"{current_border_name_}\n\nHover a border to preview it.", width: 220, height: 90, auto_width: false, auto_height: false, font: fnt_speech, text_halign: fa_center, text_valign: fa_middle, }).addEvent(LUI_EV_CREATE, function(e_) { soup_store("border_choice_details", e_); }),
+				]),
+			]).addEvent(LUI_EV_CREATE, function(element_) { soup_store("scrollmain", element_); }),
 		];
 		
 		soup_store("datafunc", function() { soup_checkout("choosemain", false).destroy(); soup_store_clear(); SYSTEMUI.ui_paused = false; });
-		var maincan = soupy_popup(dataarr, function() { soup_store_clear(); SYSTEMUI.ui_paused = false; }, "Nevermind", , , , , , , 2); soup_store("choosemain", maincan); 
+		var maincan = soupy_popup(dataarr, function() { soup_store_clear(); SYSTEMUI.ui_paused = false; }, "Close", , , , , , , 2, 32); soup_store("choosemain", maincan);
 	}
 	
 	///@desc Function for choosing an externally added font
@@ -1375,7 +1388,7 @@ pref = {
 			new LuiText({ value: "Note: Mini speeches only show up on the current highlighted page and\nwithin the dialogue box.", auto_width: false, auto_height: false, color: c_gray, text_halign: fa_center, text_valign: fa_middle, }),
 			new LuiText({ value: "You can drag a face sprite on here too, btw! New sprites are\nimmediately added.", auto_width: false, auto_height: false, color: c_gray, text_halign: fa_center, text_valign: fa_middle, }),
 			new LuiText({ value: "Add newline literals(\"\\n\") in your text if you need more room.", auto_width: false, auto_height: false, color: c_gray, text_halign: fa_center, text_valign: fa_middle, }),
-			new LuiButton({ text: "Let's get soupy!!", height: 35, }).setData("xx", x_).setData("yy", y_).setData("id_", id_).addEvent(LUI_EV_CLICK, function(element_) {
+			new LuiButton({ text: id_ == -1 ? "Add Mini Speech" : "Save Mini Speech", height: 35, }).setData("xx", x_).setData("yy", y_).setData("id_", id_).addEvent(LUI_EV_CLICK, function(element_) {
 				var txt_ = soup_checkout("minitext", false), spr_ = get_face(soup_checkout("minisprite", false)), index_ = soup_checkout("miniindex", false), font_ = soup_checkout("minifont", false), spd_ = soup_checkout("minispd", false), stick_ = soup_checkout("ministick", false);
 				var myspd_ = real_ext(spd_); if ( myspd_ == "" ) { myspd_ = 0; }
 				//if ( string_lettersdigits(txt_) == "" ) { SYSTEMUI.ui_paused = false; soupy_message("You haven't even written any|dialogue yet!!", "Go Back", 300, , , snd_error, , , true); exit; }
@@ -1505,7 +1518,7 @@ pref = {
 				.addEvent(LUI_EV_VALUE_UPDATE, function(e_) { soup_store("dataease_angle", real(e_.get())); soup_checkout("dataease_soul", false).angle = real(e_.get()); }),
 			]),
 			
-			new LuiButton({ text: "Let's get soupy!!", height: 35, }).setData("tween", easeExample).addEvent(LUI_EV_CLICK, function(e_) {
+			new LuiButton({ text: "Apply Typewriter Easing", height: 35, }).setData("tween", easeExample).addEvent(LUI_EV_CLICK, function(e_) {
 				if ( soup_checkout("dataeasetype", false) == -1 ) { soupy_message("You must select an|easing type.", , 200, , , snd_error, , , true); exit; }
 				
 				var tween = e_.getData("tween"); tween(true);
